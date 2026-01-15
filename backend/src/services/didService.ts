@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { getDidRegistry } from "./web3Client";
 
 export interface DidRecord {
   did: string;
@@ -7,9 +8,13 @@ export interface DidRecord {
 }
 
 export const createDid = async (): Promise<DidRecord> => {
-  // TODO: integrate on-chain DID registration
   const did = `did:chainshield:${randomUUID()}`;
   const publicKey = `0x${randomUUID().replace(/-/g, "")}`;
+  const registry = getDidRegistry();
+
+  const tx = await registry.registerDID(did, publicKey);
+  await tx.wait();
+
   return {
     did,
     publicKey,
@@ -18,7 +23,7 @@ export const createDid = async (): Promise<DidRecord> => {
 };
 
 export const listDids = async (): Promise<DidRecord[]> => {
-  // Placeholder in-memory response
+  // On-chain enumeration is not supported in the simple registry.
   return [];
 };
 

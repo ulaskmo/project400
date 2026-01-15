@@ -11,6 +11,8 @@
    PORT=4000
    NODE_ENV=development
    WEB3_PROVIDER_URL=https://polygon-mumbai.infura.io/v3/KEY
+   DID_REGISTRY_ADDRESS=0xYourDidRegistry
+   CREDENTIAL_REGISTRY_ADDRESS=0xYourCredentialRegistry
    IPFS_API_URL=https://ipfs.infura.io:5001
    ISSUER_PRIVATE_KEY=0xYOUR_KEY
    JWT_SECRET=super_secret_string
