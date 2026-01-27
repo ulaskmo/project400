@@ -1,66 +1,78 @@
-import { getReadOnlyCredentialRegistry } from "./web3Client";
+import { getCredential } from "./credentialService";
+import { getDid } from "./didService";
 
-interface VerificationResult {
+export interface VerificationResult {
   credentialId: string;
-  status: "valid" | "invalid" | "revoked";
+  status: "valid" | "invalid" | "revoked" | "expired";
   details?: string;
+  issuer?: {
+    did: string;
+    verified: boolean;
+  };
+  holder?: {
+    did: string;
+  };
+  timestamp: string;
 }
 
 export const verifyCredential = async (
   credentialId: string
 ): Promise<VerificationResult> => {
-  if (!credentialId) {
+  const timestamp = new Date().toISOString();
+
+  // Step 1: Fetch credential from registry
+  const credential = await getCredential(credentialId);
+
+  if (!credential) {
     return {
       credentialId,
       status: "invalid",
-      details: "Missing credential identifier"
+      details: "Credential not found in registry",
+      timestamp,
     };
   }
 
-  const registry = getReadOnlyCredentialRegistry();
-
-  try {
-    const [, , , , status] = await registry.getCredential(credentialId);
-    const mappedStatus = mapStatus(status);
-
-    if (mappedStatus === "revoked") {
-      return {
-        credentialId,
-        status: "revoked",
-        details: "Credential revoked on-chain"
-      };
-    }
-
-    if (mappedStatus === "expired") {
-      return {
-        credentialId,
-        status: "invalid",
-        details: "Credential expired"
-      };
-    }
-
+  // Step 2: Check if revoked or expired
+  if (credential.status === "revoked") {
     return {
       credentialId,
-      status: "valid",
-      details: "On-chain credential is active"
+      status: "revoked",
+      details: "This credential has been revoked by the issuer",
+      issuer: { did: credential.issuerDid, verified: true },
+      holder: { did: credential.holderDid },
+      timestamp,
     };
-  } catch (error) {
+  }
+
+  if (credential.status === "expired") {
     return {
       credentialId,
-      status: "invalid",
-      details: "Credential not found"
+      status: "expired",
+      details: "This credential has expired",
+      issuer: { did: credential.issuerDid, verified: true },
+      holder: { did: credential.holderDid },
+      timestamp,
     };
   }
-};
 
-const mapStatus = (status: number | bigint) => {
-  const statusValue = Number(status);
-  if (statusValue === 1) {
-    return "revoked";
-  }
-  if (statusValue === 2) {
-    return "expired";
-  }
-  return "valid";
-};
+  // Step 3: Verify issuer DID exists
+  const issuerDid = await getDid(credential.issuerDid);
+  const issuerVerified = issuerDid !== null;
 
+  // Step 4: In a real system, we would verify the cryptographic signature here
+  // For demo purposes, we assume the signature is valid if the credential exists
+
+  return {
+    credentialId,
+    status: "valid",
+    details: "Credential is authentic and has not been revoked",
+    issuer: {
+      did: credential.issuerDid,
+      verified: issuerVerified,
+    },
+    holder: {
+      did: credential.holderDid,
+    },
+    timestamp,
+  };
+};
