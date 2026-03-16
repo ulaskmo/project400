@@ -15,13 +15,20 @@ export const handleIssueCredential = async (
   next: NextFunction
 ) => {
   try {
-    // Get issuer's info to set issuerDid
     const issuer = getUserById(req.user!.id);
     const issuerDid = issuer?.did || `did:chainshield:issuer-${req.user!.id}`;
 
+    const { credentialId, holderDid, ipfsHash, metadata } = req.body;
+
     const payload = {
-      ...req.body,
-      issuerDid, // Override with actual issuer DID
+      credentialId,
+      holderDid,
+      ipfsHash,
+      issuerDid,
+      metadata: {
+        ...metadata,
+        issuedBy: issuer?.organizationName || issuer?.email || "Unknown Issuer",
+      },
     } as Omit<CredentialPayload, "status">;
     
     const credential = await issueCredential(payload);

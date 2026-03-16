@@ -1,18 +1,20 @@
 import { randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import { env } from "../config/env";
 import { createDid } from "./didService";
 
-// User roles
+const BCRYPT_ROUNDS = 10;
+
 export type UserRole = "holder" | "issuer" | "verifier" | "admin";
 
 export interface User {
   id: string;
   email: string;
-  password: string; // In production, this would be hashed
+  password: string;
   role: UserRole;
-  did?: string; // For holders, their associated DID
-  organizationName?: string; // For issuers/verifiers
+  did?: string;
+  organizationName?: string;
   createdAt: Date;
 }
 
@@ -30,18 +32,21 @@ export interface AuthResponse {
 // In-memory user store (demo mode)
 const users = new Map<string, User>();
 
-// Create default admin user
-const adminUser: User = {
-  id: "admin-001",
-  email: "admin@chainshield.io",
-  password: "admin123", // In production, this would be hashed!
-  role: "admin",
-  createdAt: new Date(),
+// Create default admin user with hashed password
+const initAdmin = async () => {
+  const hashedPassword = await bcrypt.hash("admin123", BCRYPT_ROUNDS);
+  const adminUser: User = {
+    id: "admin-001",
+    email: "admin@chainshield.io",
+    password: hashedPassword,
+    role: "admin",
+    createdAt: new Date(),
+  };
+  users.set(adminUser.id, adminUser);
+  users.set(adminUser.email, adminUser);
+  console.log("[Auth Service] Default admin created: admin@chainshield.io / admin123");
 };
-users.set(adminUser.id, adminUser);
-users.set(adminUser.email, adminUser); // Index by email too
-
-console.log("[Auth Service] Default admin created: admin@chainshield.io / admin123");
+initAdmin();
 
 const JWT_SECRET = env.jwtSecret || "chainshield_dev_secret";
 const JWT_EXPIRES_IN = "24h";
@@ -52,21 +57,21 @@ export const register = async (
   role: UserRole,
   organizationName?: string
 ): Promise<AuthResponse> => {
-  // Check if email already exists
   if (users.has(email)) {
     throw new Error("Email already registered");
   }
 
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
   const user: User = {
     id: randomUUID(),
     email,
-    password, // In production: await bcrypt.hash(password, 10)
+    password: hashedPassword,
     role,
     organizationName: role !== "holder" ? organizationName : undefined,
     createdAt: new Date(),
   };
 
-  // Auto-generate DID for holders
   if (role === "holder") {
     try {
       const didRecord = await createDid();
@@ -78,7 +83,7 @@ export const register = async (
   }
 
   users.set(user.id, user);
-  users.set(user.email, user); // Index by email
+  users.set(user.email, user);
 
   console.log(`[Auth] User registered: ${email} (${role})`);
 
@@ -99,8 +104,8 @@ export const login = async (
     throw new Error("Invalid email or password");
   }
 
-  // In production: await bcrypt.compare(password, user.password)
-  if (user.password !== password) {
+  const passwordMatch = await bcrypt.compare(password, user.password);
+  if (!passwordMatch) {
     throw new Error("Invalid email or password");
   }
 

@@ -3,15 +3,14 @@ import authRoutes from "./auth.routes";
 import didRoutes from "./did.routes";
 import credentialRoutes from "./credential.routes";
 import verificationRoutes from "./verification.routes";
+import statsRoutes from "./stats.routes";
 
 const router = Router();
 
-// Auth routes (public)
 router.use("/auth", authRoutes);
-
-// Protected routes
 router.use("/dids", didRoutes);
 router.use("/credentials", credentialRoutes);
 router.use("/verify", verificationRoutes);
+router.use("/stats", statsRoutes);
 
 export default router;
