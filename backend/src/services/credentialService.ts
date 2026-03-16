@@ -1,7 +1,6 @@
 import { env } from "../config/env";
-import { mockCredentialRegistry } from "./mockStorage";
+import { mockCredentialRegistry, CredentialMetadata } from "./mockStorage";
 
-// Check if we're in demo mode (no blockchain config)
 const isDemoMode = !env.web3ProviderUrl || !env.credentialRegistryAddress || !env.issuerPrivateKey;
 
 if (isDemoMode) {
@@ -15,6 +14,7 @@ export interface CredentialPayload {
   ipfsHash: string;
   signature?: string;
   status: "valid" | "revoked" | "expired";
+  metadata?: CredentialMetadata;
 }
 
 export const issueCredential = async (
@@ -28,7 +28,8 @@ export const issueCredential = async (
       payload.issuerDid,
       payload.holderDid,
       payload.ipfsHash,
-      signature
+      signature,
+      payload.metadata
     );
     return {
       credentialId: record.credentialId,
@@ -37,6 +38,7 @@ export const issueCredential = async (
       ipfsHash: record.ipfsHash,
       signature: record.signature,
       status: record.status,
+      metadata: record.metadata,
     };
   }
 
@@ -72,6 +74,7 @@ export const getCredential = async (
       ipfsHash: record.ipfsHash,
       signature: record.signature,
       status: record.status,
+      metadata: record.metadata,
     };
   }
 
@@ -126,6 +129,7 @@ export const getCredentialsByHolder = async (
       ipfsHash: record.ipfsHash,
       signature: record.signature,
       status: record.status,
+      metadata: record.metadata,
     }));
   }
   // Real blockchain mode would query events or use subgraph
@@ -144,6 +148,7 @@ export const getCredentialsByIssuer = async (
       ipfsHash: record.ipfsHash,
       signature: record.signature,
       status: record.status,
+      metadata: record.metadata,
     }));
   }
   return [];

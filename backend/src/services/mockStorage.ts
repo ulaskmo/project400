@@ -8,6 +8,14 @@ export interface StoredDid {
   createdAt: Date;
 }
 
+export interface CredentialMetadata {
+  type?: string;
+  subjectName?: string;
+  description?: string;
+  issuedBy?: string;
+  expiresAt?: string;
+}
+
 export interface StoredCredential {
   credentialId: string;
   issuerDid: string;
@@ -17,6 +25,7 @@ export interface StoredCredential {
   status: "valid" | "revoked" | "expired";
   issuedAt: Date;
   revokedAt?: Date;
+  metadata?: CredentialMetadata;
 }
 
 // In-memory stores
@@ -54,7 +63,8 @@ export const mockCredentialRegistry = {
     issuerDid: string,
     holderDid: string,
     ipfsHash: string,
-    signature: string
+    signature: string,
+    metadata?: CredentialMetadata
   ): Promise<StoredCredential> => {
     if (credentialStore.has(credentialId)) {
       throw new Error("Credential already registered");
@@ -67,6 +77,7 @@ export const mockCredentialRegistry = {
       signature,
       status: "valid",
       issuedAt: new Date(),
+      metadata,
     };
     credentialStore.set(credentialId, record);
     console.log(`[Mock] Credential registered: ${credentialId}`);
