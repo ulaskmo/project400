@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "build": "hardhat compile",
-    "deploy": "hardhat run scripts/deploy.js --network polygonMumbai",
+    "deploy": "hardhat run scripts/deploy.js --network polygonAmoy",
     "test": "hardhat test",
     "node": "hardhat node"
   },
