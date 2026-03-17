@@ -75,6 +75,33 @@ npx hardhat node                    # Terminal 1
 npx hardhat run scripts/deploy.js --network localhost  # Terminal 2
 ```
 
+## Connect to Polygon Amoy (Real Blockchain)
+
+To use the real Polygon Amoy testnet instead of demo mode:
+
+1. **Create `contracts/.env`** (or use the one from `create-test-wallet`):
+   ```bash
+   cp contracts/.env.example contracts/.env
+   ```
+   Add `DEPLOYER_PRIVATE_KEY=0x...` (your wallet private key).
+
+2. **Get test MATIC** — Go to [Polygon Faucet](https://faucet.polygon.technology/), select **Polygon Amoy**, paste your wallet address, and request test MATIC.
+
+3. **Deploy and configure**:
+   ```bash
+   node scripts/deploy-and-configure.js
+   ```
+   This deploys the contracts to Polygon Amoy and creates `backend/.env` automatically.
+
+4. **Restart the backend**:
+   ```bash
+   cd backend && npm run dev
+   ```
+
+You should see `[DID Service]` and `[Credential Service]` without "DEMO MODE" — you're now on-chain.
+
+**Optional:** Generate a new test wallet: `node scripts/create-test-wallet.js`
+
 ## Project Structure
 
 ```
