@@ -32,9 +32,9 @@ export interface AuthResponse {
 // In-memory user store (demo mode)
 const users = new Map<string, User>();
 
-// Create default admin user with hashed password
-const initAdmin = async () => {
-  const hashedPassword = await bcrypt.hash("admin123", BCRYPT_ROUNDS);
+// Create default admin user with hashed password (sync so it exists before first request)
+const initAdmin = () => {
+  const hashedPassword = bcrypt.hashSync("admin123", BCRYPT_ROUNDS);
   const adminUser: User = {
     id: "admin-001",
     email: "admin@chainshield.io",
