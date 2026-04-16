@@ -20,7 +20,7 @@ export const handleIssueCredential = async (
       return;
     }
 
-    const issuer = getUserById(req.user.id);
+    const issuer = await getUserById(req.user.id);
     const issuerDid = issuer?.did || `did:chainshield:issuer-${req.user.id}`;
 
     const { credentialId, holderDid, ipfsHash, metadata } = req.body;
@@ -76,7 +76,7 @@ export const handleGetMyCredentials = async (
       return;
     }
 
-    const user = getUserById(req.user.id);
+    const user = await getUserById(req.user.id);
     if (!user?.did) {
       res.json([]); // No DID means no credentials
       return;
@@ -100,7 +100,7 @@ export const handleGetIssuedCredentials = async (
       return;
     }
 
-    const user = getUserById(req.user.id);
+    const user = await getUserById(req.user.id);
     const issuerDid = user?.did || `did:chainshield:issuer-${req.user.id}`;
 
     const credentials = await getCredentialsByIssuer(issuerDid);
@@ -135,7 +135,7 @@ export const handleSelfIssueCredential = async (
       return;
     }
 
-    const user = getUserById(req.user.id);
+    const user = await getUserById(req.user.id);
     if (!user?.did) {
       res.status(400).json({ message: "You need a DID to add credentials" });
       return;

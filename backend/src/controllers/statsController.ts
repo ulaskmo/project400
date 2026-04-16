@@ -9,7 +9,7 @@ export const handleGetStats = async (
   next: NextFunction
 ) => {
   try {
-    const users = getAllUsers();
+    const users = await getAllUsers();
     const dids = await listDids();
     const credentials = getAllCredentials();
 

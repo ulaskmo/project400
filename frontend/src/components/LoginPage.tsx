@@ -261,6 +261,19 @@ export function LoginPage() {
                   placeholder="••••••••" required minLength={6}
                   style={{ paddingLeft: 34 }} />
               </div>
+              {/* Forgot password — sign-in only */}
+              {!isRegister && (
+                <div style={{ marginTop: 6, textAlign: "right" }}>
+                  <a href="#/forgot-password"
+                    onClick={() => { window.location.hash = "/forgot-password"; }}
+                    style={{
+                      fontSize: "0.75rem", color: "var(--brand-600)",
+                      textDecoration: "none", fontWeight: 500
+                    }}>
+                    Forgot password?
+                  </a>
+                </div>
+              )}
               {/* Password strength — register only */}
               {isRegister && password.length > 0 && (
                 <div style={{ marginTop: 6 }}>

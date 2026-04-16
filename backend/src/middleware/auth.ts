@@ -14,11 +14,11 @@ declare global {
 }
 
 // Middleware to verify JWT token
-export const authenticate = (
+export const authenticate = async (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -34,8 +34,7 @@ export const authenticate = (
     return;
   }
 
-  // Verify user still exists
-  const user = getUserById(decoded.userId);
+  const user = await getUserById(decoded.userId);
   if (!user) {
     res.status(401).json({ message: "User not found" });
     return;

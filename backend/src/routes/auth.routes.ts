@@ -5,6 +5,8 @@ import {
   handleLogin,
   handleGetProfile,
   handleGetAllUsers,
+  handleForgotPassword,
+  handleResetPassword,
 } from "../controllers/authController";
 import { authenticate, adminOnly } from "../middleware/auth";
 
@@ -13,6 +15,8 @@ const router = Router();
 // Public routes
 router.post("/register", handleRegister); // For holders self-registering
 router.post("/login", handleLogin);
+router.post("/forgot-password", handleForgotPassword);
+router.post("/reset-password", handleResetPassword);
 
 // Protected routes
 router.get("/profile", authenticate, handleGetProfile);

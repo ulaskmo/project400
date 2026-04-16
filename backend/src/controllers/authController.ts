@@ -1,5 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import { register, login, getAllUsers, getUserById, UserRole } from "../services/authService";
+import {
+  register,
+  login,
+  getAllUsers,
+  getUserById,
+  requestPasswordReset,
+  resetPassword,
+  UserRole,
+} from "../services/authService";
 
 // Public registration - holders, issuers, and verifiers
 export const handleRegister = async (
@@ -112,7 +120,7 @@ export const handleGetProfile = async (
       return;
     }
 
-    const user = getUserById(req.user.id);
+    const user = await getUserById(req.user.id);
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
@@ -131,13 +139,56 @@ export const handleGetProfile = async (
   }
 };
 
+export const handleForgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      res.status(400).json({ message: "Email is required" });
+      return;
+    }
+
+    await requestPasswordReset(email.trim().toLowerCase());
+
+    res.json({
+      message:
+        "If an account exists for that email, a password reset link has been sent.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleResetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      res.status(400).json({ message: "Token and new password are required" });
+      return;
+    }
+
+    await resetPassword(token, newPassword);
+    res.json({ message: "Password updated successfully. You can now sign in." });
+  } catch (error) {
+    const msg = (error as Error).message || "Could not reset password";
+    res.status(400).json({ message: msg });
+  }
+};
+
 export const handleGetAllUsers = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const users = getAllUsers().map(u => ({
+    const users = (await getAllUsers()).map(u => ({
       id: u.id,
       email: u.email,
       role: u.role,

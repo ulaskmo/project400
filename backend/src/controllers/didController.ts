@@ -13,8 +13,7 @@ export const handleCreateDid = async (
       return;
     }
 
-    // Check if user already has a DID
-    const user = getUserById(req.user.id);
+    const user = await getUserById(req.user.id);
     if (user?.did) {
       res.status(400).json({ 
         message: "You already have a DID", 
@@ -25,9 +24,8 @@ export const handleCreateDid = async (
 
     console.log(`[DID Controller] Creating DID for user ${req.user.id}...`);
     const didRecord = await createDid();
-    
-    // Associate DID with user
-    updateUserDid(req.user.id, didRecord.did);
+
+    await updateUserDid(req.user.id, didRecord.did);
     
     console.log(`[DID Controller] DID created and linked: ${didRecord.did}`);
     res.status(201).json(didRecord);

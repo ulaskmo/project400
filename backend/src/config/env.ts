@@ -10,6 +10,9 @@ export const env = {
   credentialRegistryAddress: process.env.CREDENTIAL_REGISTRY_ADDRESS ?? "",
   ipfsApiUrl: process.env.IPFS_API_URL ?? "",
   issuerPrivateKey: process.env.ISSUER_PRIVATE_KEY ?? "",
-  jwtSecret: process.env.JWT_SECRET ?? "chainshield_dev_secret"
+  jwtSecret: process.env.JWT_SECRET ?? "chainshield_dev_secret",
+  supabaseUrl: process.env.SUPABASE_URL ?? "",
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  appUrl: process.env.APP_URL ?? "http://localhost:5173"
 };
 

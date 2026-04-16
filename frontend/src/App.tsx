@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import "./App.css";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoginPage } from "./components/LoginPage";
+import { ForgotPasswordPage } from "./components/ForgotPasswordPage";
+import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import { PublicVerifyPage } from "./components/PublicVerifyPage";
 import { UserPanel } from "./components/UserPanel";
 import { IssuerPanel } from "./components/IssuerPanel";
@@ -84,14 +85,23 @@ function getPublicVerifyId(): string | null {
   return null;
 }
 
+function getAuthRoute(): "forgot" | "reset" | null {
+  const hash = window.location.hash;
+  if (hash.startsWith("#/forgot-password")) return "forgot";
+  if (hash.startsWith("#/reset-password")) return "reset";
+  return null;
+}
+
 function MainApp() {
   const { user, logout, hasRole, isLoading } = useAuth();
   const [publicVerifyId, setPublicVerifyId] = useState<string | null>(getPublicVerifyId());
-  
+  const [authRoute, setAuthRoute] = useState<"forgot" | "reset" | null>(getAuthRoute());
+
   // Listen for URL changes
   useEffect(() => {
     const handleHashChange = () => {
       setPublicVerifyId(getPublicVerifyId());
+      setAuthRoute(getAuthRoute());
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
@@ -125,6 +135,14 @@ function MainApp() {
   // Also show public verification page at #/verify (without ID)
   if (window.location.hash === "#/verify") {
     return <PublicVerifyPage />;
+  }
+
+  // Password reset flow (available whether or not the user is signed in)
+  if (authRoute === "forgot") {
+    return <ForgotPasswordPage />;
+  }
+  if (authRoute === "reset") {
+    return <ResetPasswordPage />;
   }
 
   if (isLoading) {
@@ -179,8 +197,8 @@ function MainApp() {
               <div>
                 <h1>ChainShield</h1>
                 {user.role !== "admin" && (
-                  <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)", fontWeight: 400, letterSpacing: "0.02em", textTransform: "none", marginTop: -1 }}>
-                    {user.role === "holder" && "Decentralized Identity Wallet"}
+                  <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", fontWeight: 400, marginTop: 1 }}>
+                    {user.role === "holder" && "Identity Wallet"}
                     {user.role === "issuer" && (user.organizationName || "Credential Issuer")}
                     {user.role === "verifier" && (user.organizationName || "Credential Verifier")}
                   </div>
@@ -198,13 +216,13 @@ function MainApp() {
           {/* User info & logout */}
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "0.8125rem", color: "var(--gray-700)", fontWeight: 500 }}>{user.email}</div>
+              <div style={{ fontSize: "0.8125rem", color: "var(--gray-800)", fontWeight: 500 }}>{user.email}</div>
               <div style={{
                 fontSize: "0.6875rem",
                 color: getRoleBadgeColor(),
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.05em"
+                fontWeight: 600,
+                textTransform: "capitalize",
+                letterSpacing: 0
               }}>
                 {user.role}
               </div>
