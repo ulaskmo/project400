@@ -105,7 +105,7 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
           <h1 style={{ 
             fontSize: "1.75rem", 
             fontWeight: 700,
-            color: "var(--gray-100)",
+            color: "var(--gray-900)",
             marginBottom: "var(--space-2)"
           }}>
             Credential Verification
@@ -163,8 +163,8 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
         {result && (
           <div className={`card ${result.verified ? "verification-valid" : "verification-invalid"}`}
             style={{ 
-              borderColor: result.verified ? "rgba(34, 197, 94, 0.5)" : "rgba(239, 68, 68, 0.5)",
-              background: result.verified ? "rgba(34, 197, 94, 0.05)" : "rgba(239, 68, 68, 0.05)"
+              borderColor: result.verified ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.2)",
+              background: result.verified ? "var(--success-50)" : "var(--danger-50)"
             }}
           >
             {/* Big Status */}
@@ -174,7 +174,7 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
                 height: 100,
                 margin: "0 auto var(--space-4)",
                 borderRadius: "50%",
-                background: result.verified ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                background: result.verified ? "var(--success-100)" : "var(--danger-50)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -248,7 +248,7 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
           color: "var(--gray-500)",
           fontSize: "0.875rem"
         }}>
-          <p>Powered by <strong style={{ color: "var(--brand-400)" }}>ChainShield</strong></p>
+          <p>Powered by <strong style={{ color: "var(--brand-600)" }}>ChainShield</strong></p>
           <p style={{ fontSize: "0.75rem", marginTop: "var(--space-1)" }}>
             Blockchain-secured credential verification
           </p>

@@ -181,7 +181,7 @@ export function AdminPanel() {
   return (
     <div className="panel">
       <div className="panel-header">
-        <div className="panel-icon" style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.08) 100%)", borderColor: "rgba(239,68,68,0.25)", color: "var(--danger-400)" }}>
+        <div className="panel-icon" style={{ background: "var(--danger-50)", borderColor: "rgba(239,68,68,0.15)", color: "var(--danger-500)" }}>
           <SettingsIcon />
         </div>
         <h2 className="panel-title">Admin Dashboard</h2>
@@ -223,15 +223,15 @@ export function AdminPanel() {
             ) : (
               <>
                 <div className="stat-item">
-                  <div className="stat-value" style={{ color: "var(--brand-400)" }}>{stats?.users.total ?? "—"}</div>
+                  <div className="stat-value" style={{ color: "var(--brand-700)" }}>{stats?.users.total ?? "—"}</div>
                   <div className="stat-label">Total Users</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-value" style={{ color: "var(--success-400)" }}>{stats?.credentials.total ?? "—"}</div>
+                  <div className="stat-value" style={{ color: "var(--success-600)" }}>{stats?.credentials.total ?? "—"}</div>
                   <div className="stat-label">Credentials</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-value" style={{ color: "var(--brand-300)" }}>{stats?.dids.total ?? "—"}</div>
+                  <div className="stat-value" style={{ color: "var(--brand-500)" }}>{stats?.dids.total ?? "—"}</div>
                   <div className="stat-label">DIDs Registered</div>
                 </div>
               </>
@@ -253,10 +253,10 @@ export function AdminPanel() {
               </div>
               <div className="card-body">
                 {[
-                  { label: "Holders", value: stats?.users.holders ?? 0, color: "var(--brand-400)" },
-                  { label: "Issuers", value: stats?.users.issuers ?? 0, color: "var(--success-400)" },
-                  { label: "Verifiers", value: stats?.users.verifiers ?? 0, color: "var(--brand-300)" },
-                  { label: "Admins", value: stats?.users.admins ?? 0, color: "var(--danger-400)" },
+                  { label: "Holders", value: stats?.users.holders ?? 0, color: "var(--brand-700)" },
+                  { label: "Issuers", value: stats?.users.issuers ?? 0, color: "var(--success-600)" },
+                  { label: "Verifiers", value: stats?.users.verifiers ?? 0, color: "var(--brand-500)" },
+                  { label: "Admins", value: stats?.users.admins ?? 0, color: "var(--danger-500)" },
                 ].map(item => (
                   <div key={item.label} className="data-row">
                     <span className="data-label">{item.label}</span>
@@ -269,7 +269,7 @@ export function AdminPanel() {
             {/* Credential Status */}
             <div className="card">
               <div className="card-header">
-                <div className="card-icon" style={{ background: "rgba(34, 197, 94, 0.1)", color: "var(--success-400)" }}>
+                <div className="card-icon" style={{ background: "var(--success-50)", color: "var(--success-600)" }}>
                   <ShieldIcon />
                 </div>
                 <div>
@@ -279,8 +279,8 @@ export function AdminPanel() {
               </div>
               <div className="card-body">
                 {[
-                  { label: "Valid", value: stats?.credentials.valid ?? 0, color: "var(--success-400)" },
-                  { label: "Revoked", value: stats?.credentials.revoked ?? 0, color: "var(--danger-400)" },
+                  { label: "Valid", value: stats?.credentials.valid ?? 0, color: "var(--success-600)" },
+                  { label: "Revoked", value: stats?.credentials.revoked ?? 0, color: "var(--danger-500)" },
                   { label: "Expired", value: stats?.credentials.expired ?? 0, color: "var(--warning-400)" },
                 ].map(item => (
                   <div key={item.label} className="data-row">
@@ -291,7 +291,7 @@ export function AdminPanel() {
                 <div className="divider" />
                 <div className="data-row">
                   <span className="data-label" style={{ fontWeight: 600 }}>Total</span>
-                  <span style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--gray-100)" }}>{stats?.credentials.total ?? 0}</span>
+                  <span style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--gray-900)" }}>{stats?.credentials.total ?? 0}</span>
                 </div>
               </div>
             </div>
@@ -311,7 +311,7 @@ export function AdminPanel() {
                 {users.slice(-5).reverse().map(u => (
                   <div key={u.id} className="data-row">
                     <div>
-                      <span style={{ color: "var(--gray-200)", fontWeight: 500 }}>{u.email}</span>
+                      <span style={{ color: "var(--gray-800)", fontWeight: 500 }}>{u.email}</span>
                       {u.organizationName && (
                         <span style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginLeft: "var(--space-2)" }}>
                           ({u.organizationName})
@@ -361,13 +361,13 @@ export function AdminPanel() {
                         justifyContent: "space-between",
                         alignItems: "center",
                         padding: "var(--space-3)",
-                        background: "rgba(255,255,255,0.02)",
+                        background: "var(--surface-inset)",
                         borderRadius: "var(--radius-md)",
                         marginBottom: "var(--space-2)"
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 500, color: "var(--gray-200)" }}>{u.email}</div>
+                        <div style={{ fontWeight: 500, color: "var(--gray-800)" }}>{u.email}</div>
                         {u.organizationName && (
                           <div style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>{u.organizationName}</div>
                         )}
@@ -439,7 +439,7 @@ export function AdminPanel() {
       {activeTab === "credentials" && (
         <div className="card">
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(34, 197, 94, 0.1)", color: "var(--success-400)" }}>
+            <div className="card-icon" style={{ background: "var(--success-50)", color: "var(--success-600)" }}>
               <FileIcon />
             </div>
             <div style={{ flex: 1 }}>
@@ -465,13 +465,13 @@ export function AdminPanel() {
                 {credentials.map((cred) => (
                   <div key={cred.credentialId} style={{
                     padding: "var(--space-4)",
-                    background: "rgba(255,255,255,0.02)",
+                    background: "var(--surface-inset)",
                     borderRadius: "var(--radius-md)",
-                    border: "1px solid rgba(255,255,255,0.05)"
+                    border: "1px solid var(--surface-border)"
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div>
-                        <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--gray-200)" }}>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--gray-800)" }}>
                           {cred.credentialId}
                         </div>
                         {cred.metadata?.subjectName && (

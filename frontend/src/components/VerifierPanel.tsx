@@ -154,17 +154,17 @@ export function VerifierPanel() {
       {/* Stats Row */}
       <div className="stats-row">
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--brand-300)" }}>{verificationHistory.length}</div>
+          <div className="stat-value" style={{ color: "var(--brand-600)" }}>{verificationHistory.length}</div>
           <div className="stat-label">Verified Today</div>
         </div>
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--success-400)" }}>
+          <div className="stat-value" style={{ color: "var(--success-600)" }}>
             {verificationHistory.filter((v) => v.status?.toLowerCase() === "valid").length}
           </div>
           <div className="stat-label">Valid</div>
         </div>
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--danger-400)" }}>
+          <div className="stat-value" style={{ color: "var(--danger-500)" }}>
             {verificationHistory.filter((v) => v.status?.toLowerCase() !== "valid").length}
           </div>
           <div className="stat-label">Invalid/Revoked</div>
@@ -175,7 +175,7 @@ export function VerifierPanel() {
         {/* Verification Input Card */}
         <div className="card">
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-300)" }}>
+            <div className="card-icon" style={{ background: "var(--brand-100)", color: "var(--brand-600)" }}>
               <QrCodeIcon />
             </div>
             <div>
@@ -275,7 +275,7 @@ export function VerifierPanel() {
         <div className="card">
           <div className="card-header">
             <div className="card-icon" style={{ 
-              background: result ? (isValid ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)") : "rgba(255, 255, 255, 0.05)",
+              background: result ? (isValid ? "var(--success-50)" : "var(--danger-50)") : "var(--surface-inset)",
               color: result ? (isValid ? "var(--success-400)" : "var(--danger-400)") : "var(--gray-500)"
             }}>
               {result ? (isValid ? <ShieldCheckIcon /> : <ShieldXIcon />) : <ShieldCheckIcon />}
@@ -288,7 +288,7 @@ export function VerifierPanel() {
 
           {!result ? (
             <div style={{ textAlign: "center", padding: "var(--space-12) var(--space-6)", color: "var(--gray-500)" }}>
-              <div style={{ width: 80, height: 80, margin: "0 auto var(--space-4)", background: "rgba(255, 255, 255, 0.03)",
+              <div style={{ width: 80, height: 80, margin: "0 auto var(--space-4)", background: "var(--surface-inset)",
                 borderRadius: "var(--radius-xl)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <QrCodeIcon />
               </div>
@@ -302,7 +302,7 @@ export function VerifierPanel() {
               {/* Status Header */}
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
                 <div style={{ width: 64, height: 64, borderRadius: "var(--radius-xl)",
-                  background: isValid ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                  background: isValid ? "var(--success-100)" : "var(--danger-50)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: isValid ? "var(--success-400)" : "var(--danger-400)" }}>
                   {isValid ? <CheckCircleIcon /> : <AlertCircleIcon />}
@@ -330,7 +330,7 @@ export function VerifierPanel() {
                   <span className="data-value" style={{ fontSize: "0.75rem" }}>
                     {result.issuer.did}
                     {result.issuer.verified && (
-                      <span style={{ color: "var(--success-400)", marginLeft: 4 }}> (verified)</span>
+                      <span style={{ color: "var(--success-600)", marginLeft: 4 }}> (verified)</span>
                     )}
                   </span>
                 </div>
@@ -373,7 +373,7 @@ export function VerifierPanel() {
       {verificationHistory.length > 0 && (
         <div className="card" style={{ marginTop: "var(--space-6)" }}>
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-300)" }}>
+            <div className="card-icon" style={{ background: "var(--brand-100)", color: "var(--brand-600)" }}>
               <ClockIcon />
             </div>
             <div>
@@ -385,7 +385,7 @@ export function VerifierPanel() {
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
               {verificationHistory.map((v, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "var(--space-3)", background: "rgba(255, 255, 255, 0.02)", borderRadius: "var(--radius-md)" }}>
+                  padding: "var(--space-3)", background: "var(--surface-inset)", borderRadius: "var(--radius-md)" }}>
                   <div>
                     <span className="data-value" style={{ fontSize: "0.8125rem" }}>{v.credentialId}</span>
                     {v.timestamp && (

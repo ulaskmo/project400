@@ -253,7 +253,7 @@ export function UserPanel() {
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
               <div className="card-icon" style={{ width: 32, height: 32 }}><FingerprintIcon /></div>
               <div>
-                <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-200)" }}>Your DID</div>
+                <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-800)" }}>Your DID</div>
                 <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)" }}>Share with issuers to receive credentials</div>
               </div>
             </div>
@@ -264,10 +264,10 @@ export function UserPanel() {
           </div>
           <code style={{
             fontSize: "0.75rem", wordBreak: "break-all",
-            background: "rgba(0,0,0,0.3)", padding: "10px var(--space-4)",
+            background: "var(--surface-inset)", padding: "10px var(--space-4)",
             borderRadius: "var(--radius-md)", display: "block",
-            fontFamily: "var(--font-mono)", color: "var(--brand-400)",
-            border: "1px solid rgba(61,122,61,0.1)", lineHeight: 1.6
+            fontFamily: "var(--font-mono)", color: "var(--brand-700)",
+            border: "1px solid var(--surface-border)", lineHeight: 1.6
           }}>
             {user.did}
           </code>
@@ -281,11 +281,11 @@ export function UserPanel() {
           <div className="stat-label">Total</div>
         </div>
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--success-400)" }}>{validCount}</div>
+          <div className="stat-value" style={{ color: "var(--success-600)" }}>{validCount}</div>
           <div className="stat-label">Valid</div>
         </div>
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--danger-400)" }}>{revokedCount}</div>
+          <div className="stat-value" style={{ color: "var(--danger-500)" }}>{revokedCount}</div>
           <div className="stat-label">Revoked</div>
         </div>
       </div>
@@ -314,11 +314,11 @@ export function UserPanel() {
         {showAddForm && (
           <div style={{
             padding: "var(--space-5)", margin: "0 0 var(--space-5)",
-            background: "rgba(61, 122, 61, 0.04)", borderRadius: "var(--radius-lg)",
-            border: "1px solid rgba(61, 122, 61, 0.12)"
+            background: "var(--brand-50)", borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--brand-200)"
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)" }}>
-              <h4 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--gray-100)" }}>Add Credential</h4>
+              <h4 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--gray-900)" }}>Add Credential</h4>
               <button className="btn btn-secondary" onClick={() => setShowAddForm(false)}
                 style={{ padding: "2px 6px" }}><XIcon /></button>
             </div>
@@ -369,11 +369,11 @@ export function UserPanel() {
                   <div style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "var(--space-2) var(--space-3)",
-                    background: "rgba(61, 122, 61, 0.06)", border: "1px solid rgba(61, 122, 61, 0.15)",
+                    background: "var(--brand-50)", border: "1px solid var(--brand-200)",
                     borderRadius: "var(--radius-md)", fontSize: "0.8125rem"
                   }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", color: "var(--gray-200)" }}>
-                      <span style={{ width: 16, height: 16, color: "var(--brand-400)" }}><PaperclipIcon /></span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", color: "var(--gray-700)" }}>
+                      <span style={{ width: 16, height: 16, color: "var(--brand-600)" }}><PaperclipIcon /></span>
                       <span style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {uploadedFile.name}
                       </span>
@@ -430,7 +430,7 @@ export function UserPanel() {
             <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--gray-500)" }}>
               <div style={{
                 width: 48, height: 48, margin: "0 auto var(--space-3)",
-                background: "rgba(255,255,255,0.03)", borderRadius: "var(--radius-md)",
+                background: "var(--surface-inset)", borderRadius: "var(--radius-md)",
                 display: "flex", alignItems: "center", justifyContent: "center"
               }}>
                 <FileIcon />
@@ -452,11 +452,11 @@ export function UserPanel() {
                     ref={isHighlighted ? newCredRef : undefined}
                     style={{
                       borderRadius: "var(--radius-lg)",
-                      border: `1px solid ${isHighlighted ? "rgba(34, 197, 94, 0.4)" : "rgba(255,255,255,0.06)"}`,
-                      background: isHighlighted ? "rgba(34, 197, 94, 0.05)" : "rgba(0,0,0,0.15)",
+                      border: `1px solid ${isHighlighted ? "rgba(34, 197, 94, 0.3)" : "var(--surface-border)"}`,
+                      background: isHighlighted ? "var(--success-50)" : "var(--surface-card)",
                       transition: "all 600ms ease",
                       overflow: "hidden",
-                      boxShadow: isHighlighted ? "0 0 20px rgba(34,197,94,0.08)" : "0 1px 3px rgba(0,0,0,0.1)"
+                      boxShadow: isHighlighted ? "0 0 16px rgba(34,197,94,0.08)" : "var(--shadow-sm)"
                     }}>
                     {/* Credential header row — always visible */}
                     <div style={{
@@ -469,7 +469,7 @@ export function UserPanel() {
                           <span style={{
                             fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase",
                             letterSpacing: "0.04em",
-                            color: isSelfAttested(cred) ? "var(--brand-300)" : "var(--success-400)"
+                            color: isSelfAttested(cred) ? "var(--brand-500)" : "var(--success-600)"
                           }}>
                             {isSelfAttested(cred) ? "Self-Attested" : (cred.metadata?.type || "Credential")}
                           </span>
@@ -477,7 +477,7 @@ export function UserPanel() {
                             <span className="status-dot" />{cred.status}
                           </span>
                         </div>
-                        <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--gray-100)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--gray-800)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {cred.metadata?.subjectName || cred.credentialId}
                         </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: 1 }}>
@@ -503,7 +503,7 @@ export function UserPanel() {
                     {isExpanded && (
                       <div style={{
                         padding: "0 var(--space-3) var(--space-3)",
-                        borderTop: "1px solid rgba(255,255,255,0.04)",
+                        borderTop: "1px solid var(--gray-200)",
                         animation: "fadeIn 0.15s ease"
                       }}>
                         <div style={{ padding: "var(--space-3) 0" }}>
@@ -559,7 +559,7 @@ export function UserPanel() {
         <div role="dialog" aria-modal="true" aria-label="Credential QR Code"
           style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+            background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
             display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
             padding: "var(--space-4)"
           }}

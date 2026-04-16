@@ -150,10 +150,10 @@ function MainApp() {
   // Role badge color
   const getRoleBadgeColor = () => {
     switch (user.role) {
-      case "admin": return "var(--danger-400)";
-      case "issuer": return "var(--success-400)";
-      case "verifier": return "var(--brand-300)";
-      default: return "var(--brand-400)";
+      case "admin": return "var(--danger-600)";
+      case "issuer": return "var(--success-600)";
+      case "verifier": return "var(--brand-500)";
+      default: return "var(--brand-600)";
     }
   };
 
@@ -191,7 +191,7 @@ function MainApp() {
           {/* User info & logout */}
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "0.8125rem", color: "var(--gray-200)", fontWeight: 500 }}>{user.email}</div>
+              <div style={{ fontSize: "0.8125rem", color: "var(--gray-700)", fontWeight: 500 }}>{user.email}</div>
               <div style={{
                 fontSize: "0.6875rem",
                 color: getRoleBadgeColor(),
@@ -242,7 +242,7 @@ function MainApp() {
       <footer className="footer">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <span>ChainShield SSI Platform</span>
-          <span style={{ color: "var(--gray-700)" }}>|</span>
+          <span style={{ color: "var(--gray-300)" }}>|</span>
           <span className="blockchain-badge">
             <BlockchainIcon />
             Blockchain Secured

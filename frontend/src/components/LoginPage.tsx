@@ -51,10 +51,10 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
   if (/[0-9]/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
 
-  if (score <= 1) return { score, label: "Weak", color: "var(--danger-400)" };
-  if (score <= 2) return { score, label: "Fair", color: "var(--warning-400)" };
-  if (score <= 3) return { score, label: "Good", color: "var(--brand-400)" };
-  return { score, label: "Strong", color: "var(--success-400)" };
+  if (score <= 1) return { score, label: "Weak", color: "var(--danger-500)" };
+  if (score <= 2) return { score, label: "Fair", color: "var(--warning-500)" };
+  if (score <= 3) return { score, label: "Good", color: "var(--brand-500)" };
+  return { score, label: "Strong", color: "var(--success-600)" };
 }
 
 export function LoginPage() {
@@ -131,7 +131,7 @@ export function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
           <img src="/chainshield.png" alt="ChainShield"
-            style={{ width: 140, height: "auto", margin: "0 auto var(--space-4)", display: "block", borderRadius: "var(--radius-lg)", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }} />
+            style={{ width: 140, height: "auto", margin: "0 auto var(--space-4)", display: "block", borderRadius: "var(--radius-lg)", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }} />
           <p style={{ color: "var(--gray-500)", fontSize: "0.6875rem", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600 }}>
             Self-Sovereign Identity Platform
           </p>
@@ -142,25 +142,25 @@ export function LoginPage() {
           {/* Toggle tabs */}
           <div style={{
             display: "flex", marginBottom: "var(--space-6)",
-            background: "rgba(0,0,0,0.25)", borderRadius: "var(--radius-lg)", padding: 4
+            background: "var(--surface-inset)", borderRadius: "var(--radius-lg)", padding: 4
           }}>
             <button onClick={() => switchMode(false)} style={{
               flex: 1, padding: "10px", border: "none", borderRadius: "var(--radius-md)",
-              background: !isRegister ? "linear-gradient(135deg, var(--brand-600), var(--brand-700))" : "transparent",
-              color: !isRegister ? "var(--ivory-100)" : "var(--gray-500)",
+              background: !isRegister ? "var(--brand-700)" : "transparent",
+              color: !isRegister ? "#fff" : "var(--gray-500)",
               fontWeight: 600, fontSize: "0.875rem", cursor: "pointer",
               transition: "all 150ms ease", fontFamily: "inherit",
-              boxShadow: !isRegister ? "0 2px 8px rgba(0,0,0,0.3)" : "none"
+              boxShadow: !isRegister ? "var(--shadow-sm)" : "none"
             }}>
               Sign In
             </button>
             <button onClick={() => switchMode(true)} style={{
               flex: 1, padding: "10px", border: "none", borderRadius: "var(--radius-md)",
-              background: isRegister ? "linear-gradient(135deg, var(--brand-600), var(--brand-700))" : "transparent",
-              color: isRegister ? "var(--ivory-100)" : "var(--gray-500)",
+              background: isRegister ? "var(--brand-700)" : "transparent",
+              color: isRegister ? "#fff" : "var(--gray-500)",
               fontWeight: 600, fontSize: "0.875rem", cursor: "pointer",
               transition: "all 150ms ease", fontFamily: "inherit",
-              boxShadow: isRegister ? "0 2px 8px rgba(0,0,0,0.3)" : "none"
+              boxShadow: isRegister ? "var(--shadow-sm)" : "none"
             }}>
               Register
             </button>
@@ -225,7 +225,7 @@ export function LoginPage() {
                     {[1, 2, 3, 4, 5].map(i => (
                       <div key={i} style={{
                         flex: 1, height: 3, borderRadius: 2,
-                        background: i <= strength.score ? strength.color : "rgba(255,255,255,0.06)",
+                        background: i <= strength.score ? strength.color : "var(--gray-200)",
                         transition: "background 200ms ease"
                       }} />
                     ))}
@@ -279,7 +279,7 @@ export function LoginPage() {
               <label style={{
                 display: "flex", alignItems: "flex-start", gap: "var(--space-2)",
                 marginBottom: "var(--space-4)", cursor: "pointer", fontSize: "0.75rem",
-                color: "var(--gray-400)", lineHeight: 1.4
+                color: "var(--gray-600)", lineHeight: 1.4
               }}>
                 <input type="checkbox" checked={acceptedTerms}
                   onChange={(e) => setAcceptedTerms(e.target.checked)}
@@ -316,23 +316,23 @@ export function LoginPage() {
           {!isRegister && (
             <div style={{
               marginTop: "var(--space-5)", padding: "var(--space-3) var(--space-4)",
-              background: "rgba(0,0,0,0.2)", borderRadius: "var(--radius-lg)",
-              border: "1px solid rgba(255,255,255,0.04)"
+              background: "var(--brand-50)", borderRadius: "var(--radius-lg)",
+              border: "1px solid var(--brand-200)"
             }}>
               <div style={{ fontSize: "0.75rem", width: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "var(--gray-400)", fontWeight: 600, fontSize: "0.6875rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>Demo Credentials</span>
+                  <span style={{ color: "var(--gray-500)", fontWeight: 600, fontSize: "0.6875rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>Demo Credentials</span>
                   <button onClick={() => { setEmail("admin@chainshield.io"); setPassword("admin123"); }}
                     style={{
-                      background: "linear-gradient(135deg, var(--brand-700), var(--brand-800))",
-                      border: "1px solid rgba(90,154,90,0.2)",
-                      color: "var(--ivory-100)", cursor: "pointer", fontSize: "0.6875rem",
+                      background: "var(--brand-700)",
+                      border: "none",
+                      color: "#fff", cursor: "pointer", fontSize: "0.6875rem",
                       padding: "3px 10px", borderRadius: "var(--radius-sm)", fontFamily: "inherit", fontWeight: 600
                     }}>
                     Auto-fill
                   </button>
                 </div>
-                <div style={{ marginTop: 6, color: "var(--gray-500)", fontFamily: "var(--font-mono)", fontSize: "0.6875rem" }}>
+                <div style={{ marginTop: 6, color: "var(--gray-600)", fontFamily: "var(--font-mono)", fontSize: "0.6875rem" }}>
                   admin@chainshield.io / admin123
                 </div>
               </div>
@@ -348,15 +348,15 @@ export function LoginPage() {
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               fontSize: "0.6875rem", padding: "4px 12px",
-              background: backendMode === "blockchain" ? "rgba(61,122,61,0.08)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${backendMode === "blockchain" ? "rgba(61,122,61,0.15)" : "rgba(255,255,255,0.05)"}`,
+              background: backendMode === "blockchain" ? "var(--brand-50)" : "var(--gray-100)",
+              border: `1px solid ${backendMode === "blockchain" ? "var(--brand-200)" : "var(--gray-200)"}`,
               borderRadius: "var(--radius-full)",
-              color: backendMode === "blockchain" ? "var(--brand-400)" : "var(--gray-500)",
+              color: backendMode === "blockchain" ? "var(--brand-600)" : "var(--gray-500)",
               fontWeight: 500
             }}>
               <span style={{
                 width: 5, height: 5, borderRadius: "50%",
-                background: backendMode === "blockchain" ? "var(--brand-400)" : "var(--gray-600)"
+                background: backendMode === "blockchain" ? "var(--brand-500)" : "var(--gray-400)"
               }} />
               {backendMode === "blockchain" ? "Connected to Polygon Amoy" : "Demo Mode"}
             </span>

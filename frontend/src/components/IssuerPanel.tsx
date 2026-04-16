@@ -202,17 +202,17 @@ export function IssuerPanel() {
 
       <div className="stats-row">
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--success-400)" }}>{issuedCredentials.length}</div>
+          <div className="stat-value" style={{ color: "var(--success-600)" }}>{issuedCredentials.length}</div>
           <div className="stat-label">Total Issued</div>
         </div>
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--success-400)" }}>
+          <div className="stat-value" style={{ color: "var(--success-600)" }}>
             {issuedCredentials.filter(c => c.status === "valid").length}
           </div>
           <div className="stat-label">Active</div>
         </div>
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--danger-400)" }}>
+          <div className="stat-value" style={{ color: "var(--danger-500)" }}>
             {issuedCredentials.filter(c => c.status === "revoked").length}
           </div>
           <div className="stat-label">Revoked</div>
@@ -223,7 +223,7 @@ export function IssuerPanel() {
         {/* Issue Credential Card */}
         <div className="card">
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(34, 197, 94, 0.1)", color: "var(--success-400)" }}>
+            <div className="card-icon success">
               <SendIcon />
             </div>
             <div>
@@ -341,7 +341,7 @@ export function IssuerPanel() {
         {/* Issued Credentials List */}
         <div className="card">
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-400)" }}>
+            <div className="card-icon">
               <ListIcon />
             </div>
             <div style={{ flex: 1 }}>
@@ -375,9 +375,9 @@ export function IssuerPanel() {
                     key={cred.credentialId}
                     style={{
                       padding: "var(--space-4)",
-                      background: "rgba(255,255,255,0.02)",
+                      background: "var(--surface-inset)",
                       borderRadius: "var(--radius-md)",
-                      border: "1px solid rgba(255,255,255,0.05)"
+                      border: "1px solid var(--surface-border)"
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -385,7 +385,7 @@ export function IssuerPanel() {
                         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-1)" }}>
                           <span style={{ 
                             fontSize: "0.7rem", 
-                            color: "var(--success-400)", 
+                            color: "var(--success-600)", 
                             fontWeight: 600,
                             textTransform: "uppercase",
                             letterSpacing: "0.05em",
@@ -393,11 +393,11 @@ export function IssuerPanel() {
                             {getTypeLabel(cred.metadata?.type)}
                           </span>
                         </div>
-                        <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--gray-200)" }}>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--gray-800)" }}>
                           {cred.credentialId}
                         </div>
                         {cred.metadata?.subjectName && (
-                          <div style={{ fontSize: "0.8125rem", color: "var(--gray-300)", marginTop: "var(--space-1)" }}>
+                          <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)", marginTop: "var(--space-1)" }}>
                             Subject: {cred.metadata.subjectName}
                           </div>
                         )}
