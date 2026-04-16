@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { env } from "../config/env";
 import { createDid } from "./didService";
+import { loadUsers, saveUsers, StoredUser } from "./userStorage";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -29,10 +30,50 @@ export interface AuthResponse {
   };
 }
 
-// In-memory user store (demo mode)
+// User store - load from file, persist on changes
 const users = new Map<string, User>();
 
-// Create default admin user with hashed password (sync so it exists before first request)
+function toUser(stored: StoredUser): User {
+  return {
+    ...stored,
+    role: stored.role as UserRole,
+    createdAt: new Date(stored.createdAt),
+  };
+}
+
+function toStored(user: User): StoredUser {
+  return {
+    id: user.id,
+    email: user.email,
+    password: user.password,
+    role: user.role,
+    did: user.did,
+    organizationName: user.organizationName,
+    createdAt: user.createdAt.toISOString(),
+  };
+}
+
+function persistUsers() {
+  const seen = new Set<string>();
+  const list: StoredUser[] = [];
+  for (const [, user] of users) {
+    if (!seen.has(user.id)) {
+      seen.add(user.id);
+      list.push(toStored(user));
+    }
+  }
+  saveUsers(list);
+}
+
+// Load users from file on startup
+const stored = loadUsers();
+stored.forEach((s) => {
+  const user = toUser(s);
+  users.set(user.id, user);
+  users.set(user.email, user);
+});
+
+// Create default admin if not exists (admin is recreated on each startup for consistency)
 const initAdmin = () => {
   const hashedPassword = bcrypt.hashSync("admin123", BCRYPT_ROUNDS);
   const adminUser: User = {
@@ -46,7 +87,10 @@ const initAdmin = () => {
   users.set(adminUser.email, adminUser);
   console.log("[Auth Service] Default admin created: admin@chainshield.io / admin123");
 };
-initAdmin();
+if (!users.has("admin@chainshield.io")) {
+  initAdmin();
+}
+persistUsers();
 
 const JWT_SECRET = env.jwtSecret || "chainshield_dev_secret";
 const JWT_EXPIRES_IN = "24h";
@@ -84,6 +128,7 @@ export const register = async (
 
   users.set(user.id, user);
   users.set(user.email, user);
+  persistUsers();
 
   console.log(`[Auth] User registered: ${email} (${role})`);
 
@@ -131,11 +176,11 @@ export const updateUserDid = (userId: string, did: string): User | null => {
   if (!user) return null;
   
   user.did = did;
+  persistUsers();
   return user;
 };
 
 export const getAllUsers = (): User[] => {
-  // Return unique users (not the email-indexed duplicates)
   const uniqueUsers = new Map<string, User>();
   users.forEach((user) => {
     uniqueUsers.set(user.id, user);
@@ -152,7 +197,6 @@ export const verifyToken = (token: string): { userId: string; role: UserRole } |
   }
 };
 
-// Helper functions
 const generateToken = (user: User): string => {
   return jwt.sign(
     { userId: user.id, role: user.role },
