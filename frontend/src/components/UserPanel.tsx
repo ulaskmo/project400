@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiGet, apiPost } from "../api/client";
+import { getVerificationUrl } from "../utils/url";
 
 type Credential = {
   credentialId: string;
@@ -16,11 +17,6 @@ type Credential = {
     issuedBy?: string;
     expiresAt?: string;
   };
-};
-
-const getVerificationURL = (credentialId: string): string => {
-  const baseUrl = window.location.origin;
-  return `${baseUrl}/#/verify/${encodeURIComponent(credentialId)}`;
 };
 
 const generateQRCodeURL = (data: string): string => {
@@ -128,6 +124,7 @@ export function UserPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
+  const [modalOpenedAt, setModalOpenedAt] = useState<number>(0);
   const [copiedDid, setCopiedDid] = useState(false);
   
   const [showAddForm, setShowAddForm] = useState(false);
@@ -386,7 +383,10 @@ export function UserPanel() {
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
               {credentials.map((cred) => (
                 <div key={cred.credentialId} className="credential-card" style={{ cursor: "pointer" }}
-                  onClick={() => setSelectedCredential(cred)}>
+                  onClick={() => {
+                    setSelectedCredential(cred);
+                    setModalOpenedAt(Date.now());
+                  }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-1)" }}>
@@ -436,13 +436,36 @@ export function UserPanel() {
         </div>
       </div>
 
-      {/* Credential Detail Modal */}
+      {/* Credential Detail Modal - only close when clicking the dark backdrop, not the card */}
       {selectedCredential && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-4)" }}
-          onClick={() => setSelectedCredential(null)}>
-          <div className="card" style={{ maxWidth: 460, width: "100%", animation: "fadeIn 0.2s ease", maxHeight: "90vh", overflowY: "auto" }}
-            onClick={(e) => e.stopPropagation()}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Credential QR Code"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "var(--space-4)",
+          }}
+          onClick={(e) => {
+            if (e.target !== e.currentTarget) return;
+            if (Date.now() - modalOpenedAt < 400) return;
+            setSelectedCredential(null);
+          }}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 460, width: "100%", animation: "fadeIn 0.2s ease", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="card-header">
               <div className="card-icon" style={{ background: "rgba(59, 130, 246, 0.1)", color: "var(--primary-400)" }}>
                 <QrCodeIcon />
@@ -451,17 +474,22 @@ export function UserPanel() {
                 <h3 className="card-title">Credential Details</h3>
                 <p className="card-subtitle">Scan QR to verify</p>
               </div>
-              <button className="btn btn-secondary" onClick={() => setSelectedCredential(null)} style={{ padding: "var(--space-2)" }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setSelectedCredential(null)}
+                style={{ padding: "var(--space-2)" }}
+                aria-label="Close"
+              >
                 <XIcon />
               </button>
             </div>
 
             <div style={{ textAlign: "center", padding: "var(--space-4)" }}>
-              <img src={generateQRCodeURL(getVerificationURL(selectedCredential.credentialId))}
+              <img src={generateQRCodeURL(getVerificationUrl(selectedCredential.credentialId))}
                 alt="Credential QR Code"
                 style={{ width: 200, height: 200, borderRadius: "var(--radius-lg)", background: "white", padding: "var(--space-2)" }} />
               <p style={{ marginTop: "var(--space-3)", fontSize: "0.75rem", color: "var(--gray-500)", wordBreak: "break-all" }}>
-                {getVerificationURL(selectedCredential.credentialId)}
+                {getVerificationUrl(selectedCredential.credentialId)}
               </p>
             </div>
 
@@ -518,6 +546,11 @@ export function UserPanel() {
               <div className="info-box-icon"><InfoIcon /></div>
               <div className="info-box-content" style={{ fontSize: "0.8125rem" }}>
                 <strong>Anyone can verify!</strong> Share this QR code or link. When scanned, it opens a public verification page - no login required.
+                {window.location.origin.includes("localhost") && (
+                  <p style={{ marginTop: "var(--space-2)", fontSize: "0.75rem", opacity: 0.9 }}>
+                    <strong>Phone scanning:</strong> Use ngrok (<code>ngrok http 5173</code>) or deploy the app, then set VITE_APP_URL in .env.local to your public URL.
+                  </p>
+                )}
               </div>
             </div>
           </div>

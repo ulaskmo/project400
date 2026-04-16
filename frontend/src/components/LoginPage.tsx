@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 
 // Icons
 const ShieldIcon = () => (
@@ -38,6 +40,14 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [backendMode, setBackendMode] = useState<"demo" | "blockchain" | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/health`)
+      .then((r) => r.json())
+      .then((d) => setBackendMode(d.mode || "demo"))
+      .catch(() => setBackendMode("demo"));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,27 +227,40 @@ export function LoginPage() {
             )}
           </div>
 
-          {/* Demo credentials */}
+          {/* Admin credentials */}
           <div className="info-box" style={{ marginTop: "var(--space-6)" }}>
             <div style={{ fontSize: "0.8125rem" }}>
-              <strong>Demo Admin Login:</strong><br />
+              <strong>Admin Login:</strong><br />
               Email: <code>admin@chainshield.io</code><br />
               Password: <code>admin123</code>
             </div>
           </div>
 
-          <div style={{ 
-            marginTop: "var(--space-4)", 
-            padding: "var(--space-3)",
-            background: "rgba(234, 179, 8, 0.1)",
-            border: "1px solid rgba(234, 179, 8, 0.3)",
-            borderRadius: "var(--radius-md)",
-            fontSize: "0.75rem",
-            color: "var(--warning-400)"
-          }}>
-            <strong>Note:</strong> This is a demo. User accounts are stored in memory and reset when the server restarts. 
-            Only the admin account persists.
-          </div>
+          {backendMode === "blockchain" ? (
+            <div style={{ 
+              marginTop: "var(--space-4)", 
+              padding: "var(--space-3)",
+              background: "rgba(34, 197, 94, 0.1)",
+              border: "1px solid rgba(34, 197, 94, 0.3)",
+              borderRadius: "var(--radius-md)",
+              fontSize: "0.75rem",
+              color: "var(--success-400)"
+            }}>
+              <strong>Blockchain mode:</strong> DIDs and credentials are stored on Polygon Amoy.
+            </div>
+          ) : (
+            <div style={{ 
+              marginTop: "var(--space-4)", 
+              padding: "var(--space-3)",
+              background: "rgba(234, 179, 8, 0.1)",
+              border: "1px solid rgba(234, 179, 8, 0.3)",
+              borderRadius: "var(--radius-md)",
+              fontSize: "0.75rem",
+              color: "var(--warning-400)"
+            }}>
+              <strong>Demo mode:</strong> User accounts are stored in memory. Deploy with blockchain config for production.
+            </div>
+          )}
         </div>
       </div>
     </div>
