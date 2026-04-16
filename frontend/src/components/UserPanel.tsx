@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiGet, apiPost } from "../api/client";
 import { getVerificationUrl } from "../utils/url";
@@ -23,12 +23,7 @@ const generateQRCodeURL = (data: string): string => {
   return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}`;
 };
 
-const WalletIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
-  </svg>
-);
-
+// Icons
 const FingerprintIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2"/>
@@ -41,12 +36,6 @@ const FingerprintIcon = () => (
 const ShieldCheckIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/>
-  </svg>
-);
-
-const LockIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
   </svg>
 );
 
@@ -78,12 +67,6 @@ const AlertCircleIcon = () => (
   </svg>
 );
 
-const InfoIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-  </svg>
-);
-
 const XIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
@@ -108,6 +91,24 @@ const CopyIcon = () => (
   </svg>
 );
 
+const PaperclipIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+  </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m6 9 6 6 6-6"/>
+  </svg>
+);
+
+const ChevronUpIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m18 15-6-6-6 6"/>
+  </svg>
+);
+
 const SELF_CREDENTIAL_TYPES = [
   { value: "certificate", label: "Certificate" },
   { value: "license", label: "License / Permit" },
@@ -123,24 +124,30 @@ export function UserPanel() {
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
-  const [modalOpenedAt, setModalOpenedAt] = useState<number>(0);
+  const [expandedCredId, setExpandedCredId] = useState<string | null>(null);
   const [copiedDid, setCopiedDid] = useState(false);
-  
+  const [highlightCredId, setHighlightCredId] = useState<string | null>(null);
+
+  // Modal for full QR view
+  const [modalCredential, setModalCredential] = useState<Credential | null>(null);
+  const [modalOpenedAt, setModalOpenedAt] = useState(0);
+
+  // Add credential form
   const [showAddForm, setShowAddForm] = useState(false);
   const [addingCredential, setAddingCredential] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-  const [addSuccess, setAddSuccess] = useState(false);
   const [selfCredentialType, setSelfCredentialType] = useState("certificate");
   const [selfCredentialTitle, setSelfCredentialTitle] = useState("");
   const [selfCredentialDescription, setSelfCredentialDescription] = useState("");
   const [selfCredentialIssuedBy, setSelfCredentialIssuedBy] = useState("");
   const [selfCredentialDate, setSelfCredentialDate] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const newCredRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user?.did) {
-      loadCredentials();
-    }
+    if (user?.did) loadCredentials();
   }, [user?.did]);
 
   const loadCredentials = async () => {
@@ -160,31 +167,39 @@ export function UserPanel() {
     e.preventDefault();
     setAddingCredential(true);
     setAddError(null);
-    setAddSuccess(false);
 
     try {
-      await apiPost("/credentials/self", {
+      const result = await apiPost<Credential>("/credentials/self", {
         credentialType: selfCredentialType,
         credentialData: {
           title: selfCredentialTitle,
           description: selfCredentialDescription,
           issuedBy: selfCredentialIssuedBy || "Self-attested",
           dateIssued: selfCredentialDate || new Date().toISOString().split("T")[0],
+          ...(uploadedFile && { fileName: uploadedFile.name, fileSize: uploadedFile.size }),
         },
       });
-      
-      setAddSuccess(true);
+
+      // Reset form
       setSelfCredentialTitle("");
       setSelfCredentialDescription("");
       setSelfCredentialIssuedBy("");
       setSelfCredentialDate("");
       setSelfCredentialType("certificate");
-      loadCredentials();
-      
+      setUploadedFile(null);
+      setShowAddForm(false);
+
+      // Reload and highlight the new credential
+      await loadCredentials();
+      const newId = result.credentialId;
+      setHighlightCredId(newId);
+      setExpandedCredId(newId);
+
+      // Scroll to the new credential
       setTimeout(() => {
-        setShowAddForm(false);
-        setAddSuccess(false);
-      }, 2000);
+        newCredRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => setHighlightCredId(null), 3000);
+      }, 100);
     } catch (e) {
       setAddError((e as Error).message);
     } finally {
@@ -200,31 +215,69 @@ export function UserPanel() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setAddError("File must be under 10 MB");
+        return;
+      }
+      setUploadedFile(file);
+      setAddError(null);
+    }
+  };
+
   const isSelfAttested = (cred: Credential) => cred.issuerDid === cred.holderDid;
   const validCount = credentials.filter(c => c.status === "valid").length;
   const revokedCount = credentials.filter(c => c.status === "revoked").length;
 
+  const toggleExpand = (id: string) => {
+    setExpandedCredId(prev => prev === id ? null : id);
+  };
+
   return (
     <div className="panel">
+      {/* Header */}
       <div className="panel-header">
         <div className="panel-icon"><FingerprintIcon /></div>
         <h2 className="panel-title">My Digital Identity</h2>
         <p className="panel-description">
-          Welcome, {user?.email}! Your credentials are securely stored on the blockchain.
+          Manage your decentralized identity and credential wallet.
         </p>
       </div>
+
+      {/* DID Section */}
+      {user?.did && (
+        <div className="card" style={{ marginBottom: "var(--space-5)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+              <div className="card-icon" style={{ width: 32, height: 32 }}><FingerprintIcon /></div>
+              <div>
+                <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-200)" }}>Your DID</div>
+                <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)" }}>Share with issuers to receive credentials</div>
+              </div>
+            </div>
+            <button className="btn btn-secondary" onClick={copyDid}
+              style={{ padding: "4px 10px", fontSize: "0.75rem" }}>
+              <CopyIcon /> {copiedDid ? "Copied!" : "Copy"}
+            </button>
+          </div>
+          <code style={{
+            fontSize: "0.75rem", wordBreak: "break-all",
+            background: "rgba(0,0,0,0.3)", padding: "var(--space-2) var(--space-3)",
+            borderRadius: "var(--radius-sm)", display: "block",
+            fontFamily: "var(--font-mono)", color: "var(--brand-400)"
+          }}>
+            {user.did}
+          </code>
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="stats-row">
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--brand-400)", fontSize: "1rem", wordBreak: "break-all" }}>
-            {user?.did ? `${user.did.slice(0, 20)}...` : "—"}
-          </div>
-          <div className="stat-label">Your DID</div>
-        </div>
-        <div className="stat-item">
           <div className="stat-value">{credentials.length}</div>
-          <div className="stat-label">Credentials</div>
+          <div className="stat-label">Total</div>
         </div>
         <div className="stat-item">
           <div className="stat-value" style={{ color: "var(--success-400)" }}>{validCount}</div>
@@ -236,126 +289,129 @@ export function UserPanel() {
         </div>
       </div>
 
-      {/* DID Card */}
-      {user?.did && (
-        <div className="card" style={{ marginBottom: "var(--space-6)" }}>
-          <div className="card-header">
-            <div className="card-icon"><FingerprintIcon /></div>
-            <div style={{ flex: 1 }}>
-              <h3 className="card-title">Your Decentralized Identifier</h3>
-              <p className="card-subtitle">Share this with issuers to receive credentials</p>
-            </div>
-            <button className="btn btn-secondary" onClick={copyDid} style={{ padding: "var(--space-2) var(--space-3)" }}>
-              <CopyIcon />
-              {copiedDid ? "Copied!" : "Copy"}
-            </button>
-          </div>
-          <div style={{ padding: "0 var(--space-6) var(--space-4)" }}>
-            <code style={{ 
-              fontSize: "0.8rem", 
-              wordBreak: "break-all",
-              background: "rgba(0,0,0,0.3)",
-              padding: "var(--space-3)",
-              borderRadius: "var(--radius-md)",
-              display: "block",
-              fontFamily: "var(--font-mono)",
-              color: "var(--brand-400)"
-            }}>
-              {user.did}
-            </code>
-          </div>
-        </div>
-      )}
-
-      {/* Credentials Wallet */}
+      {/* Credential Wallet */}
       <div className="card">
         <div className="card-header">
-          <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-300)" }}>
-            <WalletIcon />
-          </div>
+          <div className="card-icon"><FileIcon /></div>
           <div style={{ flex: 1 }}>
-            <h3 className="card-title">My Credentials Wallet</h3>
-            <p className="card-subtitle">Credentials issued to your DID</p>
+            <h3 className="card-title">Credential Wallet</h3>
+            <p className="card-subtitle">{credentials.length} credential{credentials.length !== 1 ? "s" : ""}</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowAddForm(!showAddForm)}
-            style={{ padding: "var(--space-2) var(--space-3)", marginRight: "var(--space-2)" }}>
-            <PlusIcon /> Add
-          </button>
-          <button className="btn btn-secondary" onClick={loadCredentials} disabled={loading}
-            style={{ padding: "var(--space-2) var(--space-3)" }}>
-            <RefreshIcon />
-          </button>
+          <div style={{ display: "flex", gap: "var(--space-1)" }}>
+            <button className="btn btn-primary" onClick={() => { setShowAddForm(!showAddForm); setAddError(null); }}
+              style={{ padding: "4px 10px", fontSize: "0.8125rem" }}>
+              <PlusIcon /> Add
+            </button>
+            <button className="btn btn-secondary" onClick={loadCredentials} disabled={loading}
+              style={{ padding: "4px 8px" }}>
+              <RefreshIcon />
+            </button>
+          </div>
         </div>
 
-        {/* Self-Issue Form */}
+        {/* ---- Add Credential Form ---- */}
         {showAddForm && (
-          <div style={{ padding: "var(--space-4)", background: "rgba(61, 122, 61, 0.04)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-              <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.08)", color: "var(--brand-400)", width: 32, height: 32 }}>
-                <UploadIcon />
-              </div>
-              <div>
-                <h4 style={{ fontSize: "1rem", fontWeight: 600 }}>Add Your Own Credential</h4>
-                <p style={{ fontSize: "0.8125rem", color: "var(--gray-500)" }}>Self-attest certificates, documents, or skills</p>
-              </div>
+          <div style={{
+            padding: "var(--space-4)", margin: "0 0 var(--space-4)",
+            background: "rgba(61, 122, 61, 0.04)", borderRadius: "var(--radius-md)",
+            border: "1px solid rgba(61, 122, 61, 0.1)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)" }}>
+              <h4 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--gray-100)" }}>Add Credential</h4>
+              <button className="btn btn-secondary" onClick={() => setShowAddForm(false)}
+                style={{ padding: "2px 6px" }}><XIcon /></button>
             </div>
 
             <form onSubmit={handleSelfIssue}>
-              <div style={{ display: "grid", gap: "var(--space-3)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="input-group">
-                  <label className="input-label">Credential Type</label>
+                  <label className="input-label">Type</label>
                   <select className="input" value={selfCredentialType} onChange={(e) => setSelfCredentialType(e.target.value)}>
-                    {SELF_CREDENTIAL_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
+                    {SELF_CREDENTIAL_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
                 </div>
                 <div className="input-group">
                   <label className="input-label">Title *</label>
-                  <input type="text" className="input" placeholder="e.g., AWS Certified Solutions Architect"
+                  <input type="text" className="input" placeholder="e.g., AWS Solutions Architect"
                     value={selfCredentialTitle} onChange={(e) => setSelfCredentialTitle(e.target.value)} required />
                 </div>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Description</label>
+                <textarea className="input" placeholder="Brief description..."
+                  value={selfCredentialDescription} onChange={(e) => setSelfCredentialDescription(e.target.value)}
+                  rows={2} style={{ resize: "vertical" }} />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="input-group">
-                  <label className="input-label">Description</label>
-                  <textarea className="input" placeholder="Brief description of this credential..."
-                    value={selfCredentialDescription} onChange={(e) => setSelfCredentialDescription(e.target.value)}
-                    rows={2} style={{ resize: "vertical" }} />
+                  <label className="input-label">Issued By</label>
+                  <input type="text" className="input" placeholder="e.g., Amazon Web Services"
+                    value={selfCredentialIssuedBy} onChange={(e) => setSelfCredentialIssuedBy(e.target.value)} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
-                  <div className="input-group">
-                    <label className="input-label">Issued By</label>
-                    <input type="text" className="input" placeholder="e.g., Amazon Web Services"
-                      value={selfCredentialIssuedBy} onChange={(e) => setSelfCredentialIssuedBy(e.target.value)} />
+                <div className="input-group">
+                  <label className="input-label">Date Issued</label>
+                  <input type="date" className="input" value={selfCredentialDate}
+                    onChange={(e) => setSelfCredentialDate(e.target.value)} />
+                </div>
+              </div>
+
+              {/* File Upload */}
+              <div className="input-group">
+                <label className="input-label">Supporting Document</label>
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect}
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style={{ display: "none" }} />
+                {uploadedFile ? (
+                  <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "var(--space-2) var(--space-3)",
+                    background: "rgba(61, 122, 61, 0.06)", border: "1px solid rgba(61, 122, 61, 0.15)",
+                    borderRadius: "var(--radius-md)", fontSize: "0.8125rem"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", color: "var(--gray-200)" }}>
+                      <span style={{ width: 16, height: 16, color: "var(--brand-400)" }}><PaperclipIcon /></span>
+                      <span style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {uploadedFile.name}
+                      </span>
+                      <span style={{ color: "var(--gray-500)", fontSize: "0.75rem" }}>
+                        ({(uploadedFile.size / 1024).toFixed(0)} KB)
+                      </span>
+                    </div>
+                    <button type="button" className="btn btn-secondary"
+                      onClick={() => { setUploadedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                      style={{ padding: "2px 6px" }}><XIcon /></button>
                   </div>
-                  <div className="input-group">
-                    <label className="input-label">Date Issued</label>
-                    <input type="date" className="input" value={selfCredentialDate}
-                      onChange={(e) => setSelfCredentialDate(e.target.value)} />
-                  </div>
+                ) : (
+                  <button type="button" className="btn btn-secondary w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ justifyContent: "center", borderStyle: "dashed" }}>
+                    <UploadIcon /> Upload file (PDF, image, document — max 10 MB)
+                  </button>
+                )}
+                <div style={{ fontSize: "0.6875rem", color: "var(--gray-600)", marginTop: 4 }}>
+                  File will be referenced in the credential metadata.
                 </div>
               </div>
 
               {addError && (
-                <div className="error-message" style={{ marginTop: "var(--space-3)" }}>
+                <div className="error-message" style={{ marginTop: "var(--space-2)" }}>
                   <AlertCircleIcon /><span>{addError}</span>
                 </div>
               )}
-              {addSuccess && (
-                <div style={{ marginTop: "var(--space-3)", padding: "var(--space-3)", background: "rgba(34, 197, 94, 0.1)",
-                  borderRadius: "var(--radius-md)", color: "var(--success-400)", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                  <ShieldCheckIcon /> Credential added successfully!
-                </div>
-              )}
 
-              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-4)" }}>
+              <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
                 <button type="submit" className="btn btn-primary" disabled={addingCredential || !selfCredentialTitle}>
                   {addingCredential ? (
-                    <span className="loading"><span className="spinner" />Adding...</span>
+                    <span className="loading"><span className="spinner" /> Adding...</span>
                   ) : (
-                    <><UploadIcon /> Add Credential</>
+                    <><PlusIcon /> Add Credential</>
                   )}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={() => { setShowAddForm(false); setAddError(null); }}>
+                <button type="button" className="btn btn-secondary"
+                  onClick={() => { setShowAddForm(false); setAddError(null); }}>
                   Cancel
                 </button>
               </div>
@@ -363,133 +419,175 @@ export function UserPanel() {
           </div>
         )}
 
+        {/* ---- Credential List ---- */}
         <div className="card-body">
           {loading ? (
             <div style={{ textAlign: "center", padding: "var(--space-8)" }}>
-              <span className="loading"><span className="spinner" />Loading credentials...</span>
+              <span className="loading"><span className="spinner" /> Loading...</span>
             </div>
           ) : credentials.length === 0 ? (
             <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--gray-500)" }}>
-              <div style={{ width: 60, height: 60, margin: "0 auto var(--space-4)", background: "rgba(255,255,255,0.03)",
-                borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{
+                width: 48, height: 48, margin: "0 auto var(--space-3)",
+                background: "rgba(255,255,255,0.03)", borderRadius: "var(--radius-md)",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
                 <FileIcon />
               </div>
-              <p>No credentials yet</p>
-              <p style={{ fontSize: "0.875rem", marginTop: "var(--space-2)" }}>
-                Credentials issued to you will appear here, or add your own.
+              <p style={{ fontSize: "0.875rem" }}>No credentials yet</p>
+              <p style={{ fontSize: "0.8125rem", marginTop: "var(--space-1)" }}>
+                Click "Add" to self-attest a credential, or wait for an issuer to send you one.
               </p>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-              {credentials.map((cred) => (
-                <div key={cred.credentialId} className="credential-card" style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    setSelectedCredential(cred);
-                    setModalOpenedAt(Date.now());
-                  }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-1)" }}>
-                        <span style={{ 
-                          fontSize: "0.75rem", 
-                          color: isSelfAttested(cred) ? "var(--brand-300)" : "var(--brand-400)", 
-                          fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em",
-                        }}>
-                          {isSelfAttested(cred) ? "Self-Attested" : cred.metadata?.type || "Verifiable Credential"}
-                        </span>
-                        {isSelfAttested(cred) && (
-                          <span style={{ fontSize: "0.625rem", padding: "2px 6px", background: "rgba(61, 122, 61, 0.15)",
-                            borderRadius: "var(--radius-sm)", color: "var(--accent-300)" }}>BY YOU</span>
-                        )}
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+              {credentials.map((cred) => {
+                const isExpanded = expandedCredId === cred.credentialId;
+                const isHighlighted = highlightCredId === cred.credentialId;
+                const verifyUrl = getVerificationUrl(cred.credentialId);
+
+                return (
+                  <div key={cred.credentialId}
+                    ref={isHighlighted ? newCredRef : undefined}
+                    style={{
+                      borderRadius: "var(--radius-lg)",
+                      border: `1px solid ${isHighlighted ? "rgba(34, 197, 94, 0.4)" : "rgba(255,255,255,0.05)"}`,
+                      background: isHighlighted ? "rgba(34, 197, 94, 0.04)" : "rgba(255,255,255,0.02)",
+                      transition: "all 600ms ease",
+                      overflow: "hidden"
+                    }}>
+                    {/* Credential header row — always visible */}
+                    <div style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "var(--space-3)", cursor: "pointer"
+                    }}
+                      onClick={() => toggleExpand(cred.credentialId)}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 2 }}>
+                          <span style={{
+                            fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase",
+                            letterSpacing: "0.04em",
+                            color: isSelfAttested(cred) ? "var(--brand-300)" : "var(--success-400)"
+                          }}>
+                            {isSelfAttested(cred) ? "Self-Attested" : (cred.metadata?.type || "Credential")}
+                          </span>
+                          <span className={`status-badge ${cred.status === "valid" ? "valid" : "invalid"}`}>
+                            <span className="status-dot" />{cred.status}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--gray-100)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {cred.metadata?.subjectName || cred.credentialId}
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: 1 }}>
+                          {cred.metadata?.issuedBy || (isSelfAttested(cred) ? "Self-attested" : cred.issuerDid.slice(0, 30) + "...")}
+                        </div>
                       </div>
-                      {cred.metadata?.subjectName && (
-                        <div style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--gray-100)", marginBottom: 2 }}>
-                          {cred.metadata.subjectName}
-                        </div>
-                      )}
-                      {cred.metadata?.description && (
-                        <div style={{ fontSize: "0.8125rem", color: "var(--gray-400)", marginBottom: 2 }}>
-                          {cred.metadata.description}
-                        </div>
-                      )}
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem", color: "var(--gray-500)" }}>
-                        {cred.credentialId}
+                      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                        {/* Small QR thumbnail */}
+                        <img src={generateQRCodeURL(verifyUrl)} alt="QR"
+                          style={{ width: 36, height: 36, borderRadius: 4, background: "white", padding: 2, cursor: "pointer" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModalCredential(cred);
+                            setModalOpenedAt(Date.now());
+                          }} />
+                        <span style={{ width: 18, height: 18, color: "var(--gray-500)", transition: "transform 200ms ease", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
+                          <ChevronDownIcon />
+                        </span>
                       </div>
                     </div>
-                    <span className={`status-badge ${cred.status === "valid" ? "valid" : "invalid"}`}>
-                      <span className="status-dot" />{cred.status}
-                    </span>
+
+                    {/* Expanded details */}
+                    {isExpanded && (
+                      <div style={{
+                        padding: "0 var(--space-3) var(--space-3)",
+                        borderTop: "1px solid rgba(255,255,255,0.04)",
+                        animation: "fadeIn 0.15s ease"
+                      }}>
+                        <div style={{ padding: "var(--space-3) 0" }}>
+                          <div className="data-row">
+                            <span className="data-label">Credential ID</span>
+                            <span className="data-value" style={{ fontSize: "0.7rem" }}>{cred.credentialId}</span>
+                          </div>
+                          {cred.metadata?.description && (
+                            <div className="data-row">
+                              <span className="data-label">Description</span>
+                              <span className="data-value">{cred.metadata.description}</span>
+                            </div>
+                          )}
+                          <div className="data-row">
+                            <span className="data-label">Issuer DID</span>
+                            <span className="data-value" style={{ fontSize: "0.7rem" }}>{cred.issuerDid}</span>
+                          </div>
+                          {cred.metadata?.expiresAt && (
+                            <div className="data-row">
+                              <span className="data-label">Expires</span>
+                              <span className="data-value">{cred.metadata.expiresAt}</span>
+                            </div>
+                          )}
+                          <div className="data-row">
+                            <span className="data-label">IPFS Hash</span>
+                            <span className="data-value" style={{ fontSize: "0.65rem" }}>{cred.ipfsHash}</span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                          <button className="btn btn-primary" style={{ padding: "4px 10px", fontSize: "0.8125rem" }}
+                            onClick={() => { setModalCredential(cred); setModalOpenedAt(Date.now()); }}>
+                            <QrCodeIcon /> View QR Code
+                          </button>
+                          <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8125rem" }}
+                            onClick={() => { navigator.clipboard.writeText(verifyUrl); }}>
+                            <CopyIcon /> Copy Link
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ marginTop: "var(--space-3)", fontSize: "0.8125rem", color: "var(--gray-500)" }}>
-                    {isSelfAttested(cred) 
-                      ? "Added by you" 
-                      : `Issued by: ${cred.metadata?.issuedBy || cred.issuerDid.slice(0, 30) + "..."}`}
-                  </div>
-                  <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-2)",
-                    color: "var(--brand-400)", fontSize: "0.875rem" }}>
-                    <QrCodeIcon /> Click to view details & QR code
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      {/* Credential Detail Modal - only close when clicking the dark backdrop, not the card */}
-      {selectedCredential && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Credential QR Code"
+      {/* QR Code Modal */}
+      {modalCredential && (
+        <div role="dialog" aria-modal="true" aria-label="Credential QR Code"
           style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.85)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
-            padding: "var(--space-4)",
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.85)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+            padding: "var(--space-4)"
           }}
           onClick={(e) => {
             if (e.target !== e.currentTarget) return;
             if (Date.now() - modalOpenedAt < 400) return;
-            setSelectedCredential(null);
-          }}
-        >
-          <div
-            className="card"
-            style={{ maxWidth: 460, width: "100%", animation: "fadeIn 0.2s ease", maxHeight: "90vh", overflowY: "auto" }}
-            onClick={(e) => e.stopPropagation()}
-          >
+            setModalCredential(null);
+          }}>
+          <div className="card"
+            style={{ maxWidth: 420, width: "100%", animation: "fadeIn 0.15s ease", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}>
+
             <div className="card-header">
-              <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.08)", color: "var(--brand-400)" }}>
-                <QrCodeIcon />
-              </div>
+              <div className="card-icon" style={{ width: 32, height: 32 }}><QrCodeIcon /></div>
               <div style={{ flex: 1 }}>
-                <h3 className="card-title">Credential Details</h3>
-                <p className="card-subtitle">Scan QR to verify</p>
+                <h3 className="card-title" style={{ fontSize: "0.9375rem" }}>
+                  {modalCredential.metadata?.subjectName || modalCredential.credentialId}
+                </h3>
+                <p className="card-subtitle">Scan to verify this credential</p>
               </div>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setSelectedCredential(null)}
-                style={{ padding: "var(--space-2)" }}
-                aria-label="Close"
-              >
-                <XIcon />
-              </button>
+              <button className="btn btn-secondary" onClick={() => setModalCredential(null)}
+                style={{ padding: "4px" }} aria-label="Close"><XIcon /></button>
             </div>
 
             <div style={{ textAlign: "center", padding: "var(--space-4)" }}>
-              <img src={generateQRCodeURL(getVerificationUrl(selectedCredential.credentialId))}
+              <img src={generateQRCodeURL(getVerificationUrl(modalCredential.credentialId))}
                 alt="Credential QR Code"
-                style={{ width: 200, height: 200, borderRadius: "var(--radius-lg)", background: "white", padding: "var(--space-2)" }} />
-              <p style={{ marginTop: "var(--space-3)", fontSize: "0.75rem", color: "var(--gray-500)", wordBreak: "break-all" }}>
-                {getVerificationUrl(selectedCredential.credentialId)}
+                style={{ width: 200, height: 200, borderRadius: "var(--radius-md)", background: "white", padding: 8 }} />
+              <p style={{ marginTop: "var(--space-3)", fontSize: "0.6875rem", color: "var(--gray-600)", wordBreak: "break-all", fontFamily: "var(--font-mono)" }}>
+                {getVerificationUrl(modalCredential.credentialId)}
               </p>
             </div>
 
@@ -497,97 +595,32 @@ export function UserPanel() {
 
             <div style={{ padding: "0 var(--space-4) var(--space-4)" }}>
               <div className="data-row">
-                <span className="data-label">Credential ID</span>
-                <span className="data-value" style={{ fontSize: "0.75rem" }}>{selectedCredential.credentialId}</span>
-              </div>
-              <div className="data-row">
                 <span className="data-label">Status</span>
-                <span className={`status-badge ${selectedCredential.status === "valid" ? "valid" : "invalid"}`}>
-                  <span className="status-dot" />{selectedCredential.status}
+                <span className={`status-badge ${modalCredential.status === "valid" ? "valid" : "invalid"}`}>
+                  <span className="status-dot" />{modalCredential.status}
                 </span>
               </div>
               <div className="data-row">
-                <span className="data-label">Type</span>
-                <span className="data-value">
-                  {isSelfAttested(selectedCredential) ? "Self-Attested" : selectedCredential.metadata?.type || "Verifiable Credential"}
-                </span>
+                <span className="data-label">Credential ID</span>
+                <span className="data-value" style={{ fontSize: "0.7rem" }}>{modalCredential.credentialId}</span>
               </div>
-              {selectedCredential.metadata?.subjectName && (
-                <div className="data-row">
-                  <span className="data-label">Subject</span>
-                  <span className="data-value">{selectedCredential.metadata.subjectName}</span>
-                </div>
-              )}
-              {selectedCredential.metadata?.description && (
-                <div className="data-row">
-                  <span className="data-label">Description</span>
-                  <span className="data-value" style={{ fontSize: "0.75rem" }}>{selectedCredential.metadata.description}</span>
-                </div>
-              )}
               <div className="data-row">
                 <span className="data-label">Issuer</span>
                 <span className="data-value" style={{ fontSize: "0.75rem" }}>
-                  {selectedCredential.metadata?.issuedBy || selectedCredential.issuerDid}
+                  {modalCredential.metadata?.issuedBy || modalCredential.issuerDid}
                 </span>
-              </div>
-              {selectedCredential.metadata?.expiresAt && (
-                <div className="data-row">
-                  <span className="data-label">Expires</span>
-                  <span className="data-value">{selectedCredential.metadata.expiresAt}</span>
-                </div>
-              )}
-              <div className="data-row">
-                <span className="data-label">IPFS Hash</span>
-                <span className="data-value" style={{ fontSize: "0.7rem" }}>{selectedCredential.ipfsHash}</span>
               </div>
             </div>
 
-            <div className="info-box" style={{ margin: "0 var(--space-4) var(--space-4)" }}>
-              <div className="info-box-icon"><InfoIcon /></div>
-              <div className="info-box-content" style={{ fontSize: "0.8125rem" }}>
-                <strong>Anyone can verify!</strong> Share this QR code or link. When scanned, it opens a public verification page - no login required.
-                {window.location.origin.includes("localhost") && (
-                  <p style={{ marginTop: "var(--space-2)", fontSize: "0.75rem", opacity: 0.9 }}>
-                    <strong>Phone scanning:</strong> Use ngrok (<code>ngrok http 5173</code>) or deploy the app, then set VITE_APP_URL in .env.local to your public URL.
-                  </p>
-                )}
-              </div>
+            <div style={{ padding: "0 var(--space-4) var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
+              <button className="btn btn-primary w-full" style={{ fontSize: "0.8125rem" }}
+                onClick={() => { navigator.clipboard.writeText(getVerificationUrl(modalCredential.credentialId)); }}>
+                <CopyIcon /> Copy Verification Link
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Features Section */}
-      <div className="divider" />
-      
-      <div style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>
-        <h3 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "var(--space-2)" }}>Your Identity, Your Control</h3>
-        <p style={{ color: "var(--gray-400)" }}>ChainShield gives you complete ownership of your digital identity</p>
-      </div>
-
-      <div className="feature-grid">
-        <div className="feature-item">
-          <div className="feature-icon"><WalletIcon /></div>
-          <div className="feature-content">
-            <h4>Self-Custody</h4>
-            <p>Your credentials are tied to your unique DID that only you control.</p>
-          </div>
-        </div>
-        <div className="feature-item">
-          <div className="feature-icon"><ShieldCheckIcon /></div>
-          <div className="feature-content">
-            <h4>Share with QR</h4>
-            <p>Generate QR codes to share credentials with verifiers securely.</p>
-          </div>
-        </div>
-        <div className="feature-item">
-          <div className="feature-icon"><LockIcon /></div>
-          <div className="feature-content">
-            <h4>Privacy First</h4>
-            <p>Verifiers confirm validity without accessing your personal data.</p>
-          </div>
-        </div>
-      </div>
 
       {error && (
         <div className="error-message"><AlertCircleIcon /><span>{error}</span></div>
