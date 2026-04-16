@@ -11,8 +11,15 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   const status = res.statusCode !== 200 ? res.statusCode : 500;
+
+  // Log server errors for debugging
+  if (status >= 500) {
+    console.error(`[Error] ${status} - ${err.message}`, err.stack);
+  }
+
   res.status(status).json({
-    message: err.message || "Internal server error"
+    message: err.message || "Internal server error",
+    ...(process.env.NODE_ENV === "development" && status >= 500 && { stack: err.stack }),
   });
 };
 

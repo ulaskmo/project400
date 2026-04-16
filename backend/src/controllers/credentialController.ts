@@ -15,10 +15,20 @@ export const handleIssueCredential = async (
   next: NextFunction
 ) => {
   try {
-    const issuer = getUserById(req.user!.id);
-    const issuerDid = issuer?.did || `did:chainshield:issuer-${req.user!.id}`;
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+
+    const issuer = getUserById(req.user.id);
+    const issuerDid = issuer?.did || `did:chainshield:issuer-${req.user.id}`;
 
     const { credentialId, holderDid, ipfsHash, metadata } = req.body;
+
+    if (!credentialId || !holderDid) {
+      res.status(400).json({ message: "credentialId and holderDid are required" });
+      return;
+    }
 
     const payload = {
       credentialId,
@@ -61,7 +71,12 @@ export const handleGetMyCredentials = async (
   next: NextFunction
 ) => {
   try {
-    const user = getUserById(req.user!.id);
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+
+    const user = getUserById(req.user.id);
     if (!user?.did) {
       res.json([]); // No DID means no credentials
       return;
@@ -80,8 +95,13 @@ export const handleGetIssuedCredentials = async (
   next: NextFunction
 ) => {
   try {
-    const user = getUserById(req.user!.id);
-    const issuerDid = user?.did || `did:chainshield:issuer-${req.user!.id}`;
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+
+    const user = getUserById(req.user.id);
+    const issuerDid = user?.did || `did:chainshield:issuer-${req.user.id}`;
 
     const credentials = await getCredentialsByIssuer(issuerDid);
     res.json(credentials);
@@ -110,7 +130,12 @@ export const handleSelfIssueCredential = async (
   next: NextFunction
 ) => {
   try {
-    const user = getUserById(req.user!.id);
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+
+    const user = getUserById(req.user.id);
     if (!user?.did) {
       res.status(400).json({ message: "You need a DID to add credentials" });
       return;
