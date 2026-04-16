@@ -89,12 +89,13 @@ const RefreshIcon = () => (
 type AdminTab = "overview" | "users" | "credentials";
 
 export function AdminPanel() {
-  const { user } = useAuth();
+  useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [credentials, setCredentials] = useState<CredentialData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -112,11 +113,14 @@ export function AdminPanel() {
   }, []);
 
   const loadStats = async () => {
+    setStatsLoading(true);
     try {
       const data = await apiGet<SystemStats>("/stats");
       setStats(data);
     } catch (e) {
       console.error("Failed to load stats:", e);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -212,18 +216,26 @@ export function AdminPanel() {
       {activeTab === "overview" && (
         <>
           <div className="stats-row">
-            <div className="stat-item">
-              <div className="stat-value" style={{ color: "var(--primary-400)" }}>{stats?.users.total ?? "—"}</div>
-              <div className="stat-label">Total Users</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-value" style={{ color: "var(--success-400)" }}>{stats?.credentials.total ?? "—"}</div>
-              <div className="stat-label">Credentials</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-value" style={{ color: "var(--accent-400)" }}>{stats?.dids.total ?? "—"}</div>
-              <div className="stat-label">DIDs Registered</div>
-            </div>
+            {statsLoading ? (
+              <div style={{ textAlign: "center", padding: "var(--space-4)", width: "100%" }}>
+                <span className="loading"><span className="spinner" /></span>
+              </div>
+            ) : (
+              <>
+                <div className="stat-item">
+                  <div className="stat-value" style={{ color: "var(--primary-400)" }}>{stats?.users.total ?? "—"}</div>
+                  <div className="stat-label">Total Users</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-value" style={{ color: "var(--success-400)" }}>{stats?.credentials.total ?? "—"}</div>
+                  <div className="stat-label">Credentials</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-value" style={{ color: "var(--accent-400)" }}>{stats?.dids.total ?? "—"}</div>
+                  <div className="stat-label">DIDs Registered</div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="card-grid">
