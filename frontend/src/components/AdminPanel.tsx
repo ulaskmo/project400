@@ -181,7 +181,7 @@ export function AdminPanel() {
   return (
     <div className="panel">
       <div className="panel-header">
-        <div className="panel-icon" style={{ background: "linear-gradient(135deg, var(--danger-500) 0%, #b91c1c 100%)" }}>
+        <div className="panel-icon" style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.08) 100%)", borderColor: "rgba(239,68,68,0.25)", color: "var(--danger-400)" }}>
           <SettingsIcon />
         </div>
         <h2 className="panel-title">Admin Dashboard</h2>

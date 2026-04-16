@@ -164,22 +164,40 @@ function MainApp() {
       {/* Header */}
       <header className="header">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-          <div className="logo-container" style={{ marginBottom: 0 }}>
-            <div className="logo-icon">
-              <img src="/chainshield.png" alt="ChainShield" />
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
+            <div className="logo-container" style={{ marginBottom: 0 }}>
+              <div className="logo-icon">
+                <img src="/chainshield.png" alt="ChainShield" />
+              </div>
+              <div>
+                <h1>ChainShield</h1>
+                {user.role !== "admin" && (
+                  <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)", fontWeight: 400, letterSpacing: "0.02em", textTransform: "none", marginTop: -1 }}>
+                    {user.role === "holder" && "Decentralized Identity Wallet"}
+                    {user.role === "issuer" && (user.organizationName || "Credential Issuer")}
+                    {user.role === "verifier" && (user.organizationName || "Credential Verifier")}
+                  </div>
+                )}
+              </div>
             </div>
-            <h1>ChainShield</h1>
+            {user.role === "admin" && (
+              <div className="header-badge">
+                <span className="dot" />
+                Admin
+              </div>
+            )}
           </div>
 
           {/* User info & logout */}
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "0.875rem", color: "var(--gray-300)" }}>{user.email}</div>
-              <div style={{ 
-                fontSize: "0.75rem", 
+              <div style={{ fontSize: "0.8125rem", color: "var(--gray-200)", fontWeight: 500 }}>{user.email}</div>
+              <div style={{
+                fontSize: "0.6875rem",
                 color: getRoleBadgeColor(),
-                fontWeight: 600,
-                textTransform: "uppercase"
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em"
               }}>
                 {user.role}
               </div>
@@ -187,27 +205,13 @@ function MainApp() {
             <button
               onClick={logout}
               className="btn btn-secondary"
-              style={{ padding: "var(--space-2) var(--space-3)" }}
+              style={{ padding: "8px 10px" }}
+              title="Sign out"
             >
               <LogoutIcon />
             </button>
           </div>
         </div>
-
-        {user.role !== "admin" && (
-          <p className="header-subtitle" style={{ marginTop: "var(--space-4)" }}>
-            {user.role === "holder" && "Manage your decentralized identity and credentials"}
-            {user.role === "issuer" && `Issuing credentials as ${user.organizationName || "Organization"}`}
-            {user.role === "verifier" && `Verifying credentials as ${user.organizationName || "Organization"}`}
-          </p>
-        )}
-
-        {user.role === "admin" && (
-          <div className="header-badge" style={{ marginTop: "var(--space-4)" }}>
-            <span className="dot" style={{ background: "var(--danger-400)" }} />
-            Admin Mode - Full Access
-          </div>
-        )}
       </header>
 
       {/* Navigation - only show if multiple tabs available */}
@@ -236,13 +240,14 @@ function MainApp() {
 
       {/* Footer */}
       <footer className="footer">
-        <p>
-          ChainShield SSI Platform • Built with React & Solidity • 
-          <span className="blockchain-badge" style={{ marginLeft: '8px' }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
+          <span>ChainShield SSI Platform</span>
+          <span style={{ color: "var(--gray-700)" }}>|</span>
+          <span className="blockchain-badge">
             <BlockchainIcon />
             Blockchain Secured
           </span>
-        </p>
+        </div>
       </footer>
     </div>
   );

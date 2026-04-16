@@ -129,36 +129,38 @@ export function LoginPage() {
         maxWidth: isRegister ? 440 : 400, padding: "var(--space-6)"
       }}>
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>
+        <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
           <img src="/chainshield.png" alt="ChainShield"
-            style={{ width: 160, height: "auto", margin: "0 auto var(--space-3)", display: "block", borderRadius: "var(--radius-lg)" }} />
-          <p style={{ color: "var(--gray-500)", fontSize: "0.75rem", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+            style={{ width: 140, height: "auto", margin: "0 auto var(--space-4)", display: "block", borderRadius: "var(--radius-lg)", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }} />
+          <p style={{ color: "var(--gray-500)", fontSize: "0.6875rem", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600 }}>
             Self-Sovereign Identity Platform
           </p>
         </div>
 
         {/* Card */}
-        <div className="card" style={{ padding: "var(--space-6)" }}>
+        <div className="card" style={{ padding: "var(--space-8) var(--space-6)" }}>
           {/* Toggle tabs */}
           <div style={{
-            display: "flex", marginBottom: "var(--space-5)",
-            background: "rgba(255,255,255,0.03)", borderRadius: "var(--radius-md)", padding: 3
+            display: "flex", marginBottom: "var(--space-6)",
+            background: "rgba(0,0,0,0.25)", borderRadius: "var(--radius-lg)", padding: 4
           }}>
             <button onClick={() => switchMode(false)} style={{
-              flex: 1, padding: "var(--space-2)", border: "none", borderRadius: "var(--radius-sm)",
-              background: !isRegister ? "var(--brand-700)" : "transparent",
+              flex: 1, padding: "10px", border: "none", borderRadius: "var(--radius-md)",
+              background: !isRegister ? "linear-gradient(135deg, var(--brand-600), var(--brand-700))" : "transparent",
               color: !isRegister ? "var(--ivory-100)" : "var(--gray-500)",
-              fontWeight: 500, fontSize: "0.875rem", cursor: "pointer",
-              transition: "all 150ms ease", fontFamily: "inherit"
+              fontWeight: 600, fontSize: "0.875rem", cursor: "pointer",
+              transition: "all 150ms ease", fontFamily: "inherit",
+              boxShadow: !isRegister ? "0 2px 8px rgba(0,0,0,0.3)" : "none"
             }}>
               Sign In
             </button>
             <button onClick={() => switchMode(true)} style={{
-              flex: 1, padding: "var(--space-2)", border: "none", borderRadius: "var(--radius-sm)",
-              background: isRegister ? "var(--brand-700)" : "transparent",
+              flex: 1, padding: "10px", border: "none", borderRadius: "var(--radius-md)",
+              background: isRegister ? "linear-gradient(135deg, var(--brand-600), var(--brand-700))" : "transparent",
               color: isRegister ? "var(--ivory-100)" : "var(--gray-500)",
-              fontWeight: 500, fontSize: "0.875rem", cursor: "pointer",
-              transition: "all 150ms ease", fontFamily: "inherit"
+              fontWeight: 600, fontSize: "0.875rem", cursor: "pointer",
+              transition: "all 150ms ease", fontFamily: "inherit",
+              boxShadow: isRegister ? "0 2px 8px rgba(0,0,0,0.3)" : "none"
             }}>
               Register
             </button>
@@ -312,21 +314,26 @@ export function LoginPage() {
 
           {/* Demo credentials */}
           {!isRegister && (
-            <div className="info-box" style={{ marginTop: "var(--space-5)" }}>
+            <div style={{
+              marginTop: "var(--space-5)", padding: "var(--space-3) var(--space-4)",
+              background: "rgba(0,0,0,0.2)", borderRadius: "var(--radius-lg)",
+              border: "1px solid rgba(255,255,255,0.04)"
+            }}>
               <div style={{ fontSize: "0.75rem", width: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <strong style={{ color: "var(--gray-300)" }}>Demo Login</strong>
+                  <span style={{ color: "var(--gray-400)", fontWeight: 600, fontSize: "0.6875rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>Demo Credentials</span>
                   <button onClick={() => { setEmail("admin@chainshield.io"); setPassword("admin123"); }}
                     style={{
-                      background: "none", border: "1px solid rgba(255,255,255,0.08)",
-                      color: "var(--brand-400)", cursor: "pointer", fontSize: "0.6875rem",
-                      padding: "2px 8px", borderRadius: "var(--radius-sm)", fontFamily: "inherit"
+                      background: "linear-gradient(135deg, var(--brand-700), var(--brand-800))",
+                      border: "1px solid rgba(90,154,90,0.2)",
+                      color: "var(--ivory-100)", cursor: "pointer", fontSize: "0.6875rem",
+                      padding: "3px 10px", borderRadius: "var(--radius-sm)", fontFamily: "inherit", fontWeight: 600
                     }}>
                     Auto-fill
                   </button>
                 </div>
-                <div style={{ marginTop: 4, color: "var(--gray-500)" }}>
-                  <code>admin@chainshield.io</code> / <code>admin123</code>
+                <div style={{ marginTop: 6, color: "var(--gray-500)", fontFamily: "var(--font-mono)", fontSize: "0.6875rem" }}>
+                  admin@chainshield.io / admin123
                 </div>
               </div>
             </div>
@@ -336,14 +343,23 @@ export function LoginPage() {
         {/* Mode indicator */}
         {backendMode && (
           <div style={{
-            marginTop: "var(--space-4)", textAlign: "center",
-            fontSize: "0.6875rem", color: "var(--gray-600)"
+            marginTop: "var(--space-5)", textAlign: "center",
           }}>
-            {backendMode === "blockchain" ? (
-              <span style={{ color: "var(--brand-400)" }}>Connected to Polygon Amoy</span>
-            ) : (
-              <span>Running in Demo Mode</span>
-            )}
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: "0.6875rem", padding: "4px 12px",
+              background: backendMode === "blockchain" ? "rgba(61,122,61,0.08)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${backendMode === "blockchain" ? "rgba(61,122,61,0.15)" : "rgba(255,255,255,0.05)"}`,
+              borderRadius: "var(--radius-full)",
+              color: backendMode === "blockchain" ? "var(--brand-400)" : "var(--gray-500)",
+              fontWeight: 500
+            }}>
+              <span style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: backendMode === "blockchain" ? "var(--brand-400)" : "var(--gray-600)"
+              }} />
+              {backendMode === "blockchain" ? "Connected to Polygon Amoy" : "Demo Mode"}
+            </span>
           </div>
         )}
       </div>

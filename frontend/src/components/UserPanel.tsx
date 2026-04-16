@@ -264,9 +264,10 @@ export function UserPanel() {
           </div>
           <code style={{
             fontSize: "0.75rem", wordBreak: "break-all",
-            background: "rgba(0,0,0,0.3)", padding: "var(--space-2) var(--space-3)",
-            borderRadius: "var(--radius-sm)", display: "block",
-            fontFamily: "var(--font-mono)", color: "var(--brand-400)"
+            background: "rgba(0,0,0,0.3)", padding: "10px var(--space-4)",
+            borderRadius: "var(--radius-md)", display: "block",
+            fontFamily: "var(--font-mono)", color: "var(--brand-400)",
+            border: "1px solid rgba(61,122,61,0.1)", lineHeight: 1.6
           }}>
             {user.did}
           </code>
@@ -312,9 +313,9 @@ export function UserPanel() {
         {/* ---- Add Credential Form ---- */}
         {showAddForm && (
           <div style={{
-            padding: "var(--space-4)", margin: "0 0 var(--space-4)",
-            background: "rgba(61, 122, 61, 0.04)", borderRadius: "var(--radius-md)",
-            border: "1px solid rgba(61, 122, 61, 0.1)"
+            padding: "var(--space-5)", margin: "0 0 var(--space-5)",
+            background: "rgba(61, 122, 61, 0.04)", borderRadius: "var(--radius-lg)",
+            border: "1px solid rgba(61, 122, 61, 0.12)"
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-4)" }}>
               <h4 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--gray-100)" }}>Add Credential</h4>
@@ -451,10 +452,11 @@ export function UserPanel() {
                     ref={isHighlighted ? newCredRef : undefined}
                     style={{
                       borderRadius: "var(--radius-lg)",
-                      border: `1px solid ${isHighlighted ? "rgba(34, 197, 94, 0.4)" : "rgba(255,255,255,0.05)"}`,
-                      background: isHighlighted ? "rgba(34, 197, 94, 0.04)" : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${isHighlighted ? "rgba(34, 197, 94, 0.4)" : "rgba(255,255,255,0.06)"}`,
+                      background: isHighlighted ? "rgba(34, 197, 94, 0.05)" : "rgba(0,0,0,0.15)",
                       transition: "all 600ms ease",
-                      overflow: "hidden"
+                      overflow: "hidden",
+                      boxShadow: isHighlighted ? "0 0 20px rgba(34,197,94,0.08)" : "0 1px 3px rgba(0,0,0,0.1)"
                     }}>
                     {/* Credential header row — always visible */}
                     <div style={{
@@ -557,8 +559,8 @@ export function UserPanel() {
         <div role="dialog" aria-modal="true" aria-label="Credential QR Code"
           style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.85)", display: "flex",
-            alignItems: "center", justifyContent: "center", zIndex: 9999,
+            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
             padding: "var(--space-4)"
           }}
           onClick={(e) => {
