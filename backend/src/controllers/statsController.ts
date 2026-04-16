@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { getAllUsers } from "../services/authService";
 import { listDids } from "../services/didService";
-import { mockCredentialRegistry } from "../services/mockStorage";
+import { getAllCredentials } from "../services/credentialService";
 
 export const handleGetStats = async (
   _req: Request,
@@ -11,7 +11,7 @@ export const handleGetStats = async (
   try {
     const users = getAllUsers();
     const dids = await listDids();
-    const credentials = mockCredentialRegistry.listAll();
+    const credentials = getAllCredentials();
 
     res.json({
       users: {
@@ -42,16 +42,8 @@ export const handleGetAllCredentials = async (
   next: NextFunction
 ) => {
   try {
-    const credentials = mockCredentialRegistry.listAll();
-    res.json(credentials.map(c => ({
-      credentialId: c.credentialId,
-      issuerDid: c.issuerDid,
-      holderDid: c.holderDid,
-      status: c.status,
-      issuedAt: c.issuedAt,
-      revokedAt: c.revokedAt,
-      metadata: c.metadata,
-    })));
+    const credentials = getAllCredentials();
+    res.json(credentials);
   } catch (error) {
     next(error);
   }

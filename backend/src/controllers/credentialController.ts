@@ -169,6 +169,13 @@ export const handleSelfIssueCredential = async (
       holderDid: user.did,
       issuerDid: user.did, // Self-issued: holder = issuer
       ipfsHash,
+      metadata: {
+        type: `self:${credentialType}`,
+        subjectName: credentialData.title || undefined,
+        description: credentialData.description || undefined,
+        issuedBy: credentialData.issuedBy || user.email,
+        expiresAt: credentialData.expiresAt || undefined,
+      },
     } as Omit<CredentialPayload, "status">;
 
     const credential = await issueCredential(payload);
