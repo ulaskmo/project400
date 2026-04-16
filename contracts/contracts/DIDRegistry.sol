@@ -11,7 +11,7 @@ contract DIDRegistry {
 
     mapping(string => DIDRecord) private dids;
 
-    event DIDRegistered(string did, address controller, string publicKey, uint256 createdAt);
+    event DIDRegistered(string indexed did, address indexed controller, string publicKey, uint256 createdAt);
 
     function registerDID(string calldata did, string calldata publicKey) external {
         require(bytes(did).length > 0, "DID required");

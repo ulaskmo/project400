@@ -9,6 +9,7 @@ contract CredentialRegistry {
     }
 
     struct CredentialRecord {
+        address registeredBy;
         string issuerDid;
         string holderDid;
         string ipfsHash;
@@ -22,14 +23,14 @@ contract CredentialRegistry {
     mapping(string => CredentialRecord) private credentials;
 
     event CredentialRegistered(
-        string credentialId,
+        string indexed credentialId,
         string issuerDid,
         string holderDid,
         string ipfsHash,
         string signature,
         uint256 issuedAt
     );
-    event CredentialRevoked(string credentialId, uint256 revokedAt);
+    event CredentialRevoked(string indexed credentialId, uint256 revokedAt);
 
     function registerCredential(
         string calldata credentialId,
@@ -42,6 +43,7 @@ contract CredentialRegistry {
         require(!credentials[credentialId].exists, "Credential already registered");
 
         credentials[credentialId] = CredentialRecord({
+            registeredBy: msg.sender,
             issuerDid: issuerDid,
             holderDid: holderDid,
             ipfsHash: ipfsHash,
@@ -66,6 +68,7 @@ contract CredentialRegistry {
         CredentialRecord storage record = credentials[credentialId];
         require(record.exists, "Credential not found");
         require(record.status == CredentialStatus.Valid, "Credential not active");
+        require(record.registeredBy == msg.sender, "Only the issuer can revoke");
 
         record.status = CredentialStatus.Revoked;
         record.revokedAt = block.timestamp;
