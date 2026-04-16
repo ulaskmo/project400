@@ -100,9 +100,8 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
       }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "var(--space-8)", paddingTop: "var(--space-8)" }}>
-          <div className="logo-icon" style={{ margin: "0 auto var(--space-4)", width: 64, height: 64 }}>
-            <ShieldCheckIcon />
-          </div>
+          <img src="/chainshield.png" alt="ChainShield"
+            style={{ width: 140, height: "auto", margin: "0 auto var(--space-4)", display: "block", borderRadius: "var(--radius-lg)" }} />
           <h1 style={{ 
             fontSize: "1.75rem", 
             fontWeight: 700,
@@ -249,7 +248,7 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
           color: "var(--gray-500)",
           fontSize: "0.875rem"
         }}>
-          <p>Powered by <strong style={{ color: "var(--primary-400)" }}>ChainShield</strong></p>
+          <p>Powered by <strong style={{ color: "var(--brand-400)" }}>ChainShield</strong></p>
           <p style={{ fontSize: "0.75rem", marginTop: "var(--space-1)" }}>
             Blockchain-secured credential verification
           </p>

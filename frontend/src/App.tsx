@@ -152,8 +152,8 @@ function MainApp() {
     switch (user.role) {
       case "admin": return "var(--danger-400)";
       case "issuer": return "var(--success-400)";
-      case "verifier": return "var(--accent-400)";
-      default: return "var(--primary-400)";
+      case "verifier": return "var(--brand-300)";
+      default: return "var(--brand-400)";
     }
   };
 
@@ -166,7 +166,7 @@ function MainApp() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1200, margin: "0 auto", width: "100%" }}>
           <div className="logo-container" style={{ marginBottom: 0 }}>
             <div className="logo-icon">
-              <ShieldIcon />
+              <img src="/chainshield.png" alt="ChainShield" />
             </div>
             <h1>ChainShield</h1>
           </div>

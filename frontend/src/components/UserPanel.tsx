@@ -217,7 +217,7 @@ export function UserPanel() {
       {/* Stats Row */}
       <div className="stats-row">
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--primary-400)", fontSize: "1rem", wordBreak: "break-all" }}>
+          <div className="stat-value" style={{ color: "var(--brand-400)", fontSize: "1rem", wordBreak: "break-all" }}>
             {user?.did ? `${user.did.slice(0, 20)}...` : "—"}
           </div>
           <div className="stat-label">Your DID</div>
@@ -259,7 +259,7 @@ export function UserPanel() {
               borderRadius: "var(--radius-md)",
               display: "block",
               fontFamily: "var(--font-mono)",
-              color: "var(--primary-400)"
+              color: "var(--brand-400)"
             }}>
               {user.did}
             </code>
@@ -270,7 +270,7 @@ export function UserPanel() {
       {/* Credentials Wallet */}
       <div className="card">
         <div className="card-header">
-          <div className="card-icon" style={{ background: "rgba(139, 92, 246, 0.1)", color: "var(--accent-400)" }}>
+          <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-300)" }}>
             <WalletIcon />
           </div>
           <div style={{ flex: 1 }}>
@@ -289,9 +289,9 @@ export function UserPanel() {
 
         {/* Self-Issue Form */}
         {showAddForm && (
-          <div style={{ padding: "var(--space-4)", background: "rgba(59, 130, 246, 0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ padding: "var(--space-4)", background: "rgba(61, 122, 61, 0.04)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-4)" }}>
-              <div className="card-icon" style={{ background: "rgba(59, 130, 246, 0.1)", color: "var(--primary-400)", width: 32, height: 32 }}>
+              <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.08)", color: "var(--brand-400)", width: 32, height: 32 }}>
                 <UploadIcon />
               </div>
               <div>
@@ -392,13 +392,13 @@ export function UserPanel() {
                       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-1)" }}>
                         <span style={{ 
                           fontSize: "0.75rem", 
-                          color: isSelfAttested(cred) ? "var(--accent-400)" : "var(--primary-400)", 
+                          color: isSelfAttested(cred) ? "var(--brand-300)" : "var(--brand-400)", 
                           fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em",
                         }}>
                           {isSelfAttested(cred) ? "Self-Attested" : cred.metadata?.type || "Verifiable Credential"}
                         </span>
                         {isSelfAttested(cred) && (
-                          <span style={{ fontSize: "0.625rem", padding: "2px 6px", background: "rgba(139, 92, 246, 0.2)",
+                          <span style={{ fontSize: "0.625rem", padding: "2px 6px", background: "rgba(61, 122, 61, 0.15)",
                             borderRadius: "var(--radius-sm)", color: "var(--accent-300)" }}>BY YOU</span>
                         )}
                       </div>
@@ -426,7 +426,7 @@ export function UserPanel() {
                       : `Issued by: ${cred.metadata?.issuedBy || cred.issuerDid.slice(0, 30) + "..."}`}
                   </div>
                   <div style={{ marginTop: "var(--space-3)", display: "flex", alignItems: "center", gap: "var(--space-2)",
-                    color: "var(--primary-400)", fontSize: "0.875rem" }}>
+                    color: "var(--brand-400)", fontSize: "0.875rem" }}>
                     <QrCodeIcon /> Click to view details & QR code
                   </div>
                 </div>
@@ -467,7 +467,7 @@ export function UserPanel() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="card-header">
-              <div className="card-icon" style={{ background: "rgba(59, 130, 246, 0.1)", color: "var(--primary-400)" }}>
+              <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.08)", color: "var(--brand-400)" }}>
                 <QrCodeIcon />
               </div>
               <div style={{ flex: 1 }}>

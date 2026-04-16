@@ -154,7 +154,7 @@ export function VerifierPanel() {
       {/* Stats Row */}
       <div className="stats-row">
         <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--accent-400)" }}>{verificationHistory.length}</div>
+          <div className="stat-value" style={{ color: "var(--brand-300)" }}>{verificationHistory.length}</div>
           <div className="stat-label">Verified Today</div>
         </div>
         <div className="stat-item">
@@ -175,7 +175,7 @@ export function VerifierPanel() {
         {/* Verification Input Card */}
         <div className="card">
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(139, 92, 246, 0.1)", color: "var(--accent-400)" }}>
+            <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-300)" }}>
               <QrCodeIcon />
             </div>
             <div>
@@ -373,7 +373,7 @@ export function VerifierPanel() {
       {verificationHistory.length > 0 && (
         <div className="card" style={{ marginTop: "var(--space-6)" }}>
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(139, 92, 246, 0.1)", color: "var(--accent-400)" }}>
+            <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-300)" }}>
               <ClockIcon />
             </div>
             <div>

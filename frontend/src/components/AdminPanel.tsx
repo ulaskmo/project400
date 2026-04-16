@@ -223,7 +223,7 @@ export function AdminPanel() {
             ) : (
               <>
                 <div className="stat-item">
-                  <div className="stat-value" style={{ color: "var(--primary-400)" }}>{stats?.users.total ?? "—"}</div>
+                  <div className="stat-value" style={{ color: "var(--brand-400)" }}>{stats?.users.total ?? "—"}</div>
                   <div className="stat-label">Total Users</div>
                 </div>
                 <div className="stat-item">
@@ -231,7 +231,7 @@ export function AdminPanel() {
                   <div className="stat-label">Credentials</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-value" style={{ color: "var(--accent-400)" }}>{stats?.dids.total ?? "—"}</div>
+                  <div className="stat-value" style={{ color: "var(--brand-300)" }}>{stats?.dids.total ?? "—"}</div>
                   <div className="stat-label">DIDs Registered</div>
                 </div>
               </>
@@ -253,9 +253,9 @@ export function AdminPanel() {
               </div>
               <div className="card-body">
                 {[
-                  { label: "Holders", value: stats?.users.holders ?? 0, color: "var(--primary-400)" },
+                  { label: "Holders", value: stats?.users.holders ?? 0, color: "var(--brand-400)" },
                   { label: "Issuers", value: stats?.users.issuers ?? 0, color: "var(--success-400)" },
-                  { label: "Verifiers", value: stats?.users.verifiers ?? 0, color: "var(--accent-400)" },
+                  { label: "Verifiers", value: stats?.users.verifiers ?? 0, color: "var(--brand-300)" },
                   { label: "Admins", value: stats?.users.admins ?? 0, color: "var(--danger-400)" },
                 ].map(item => (
                   <div key={item.label} className="data-row">

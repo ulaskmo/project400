@@ -341,7 +341,7 @@ export function IssuerPanel() {
         {/* Issued Credentials List */}
         <div className="card">
           <div className="card-header">
-            <div className="card-icon" style={{ background: "rgba(59, 130, 246, 0.1)", color: "var(--primary-400)" }}>
+            <div className="card-icon" style={{ background: "rgba(61, 122, 61, 0.1)", color: "var(--brand-400)" }}>
               <ListIcon />
             </div>
             <div style={{ flex: 1 }}>
