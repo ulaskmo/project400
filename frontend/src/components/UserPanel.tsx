@@ -67,33 +67,9 @@ const AlertCircleIcon = () => (
   </svg>
 );
 
-const XIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-  </svg>
-);
-
-const PlusIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12h14"/><path d="M12 5v14"/>
-  </svg>
-);
-
-const UploadIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>
-  </svg>
-);
-
 const CopyIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-  </svg>
-);
-
-const PaperclipIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
   </svg>
 );
 
@@ -103,19 +79,35 @@ const ChevronDownIcon = () => (
   </svg>
 );
 
-const ChevronUpIcon = () => (
+const PlusIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m18 15-6-6-6 6"/>
+    <path d="M5 12h14"/><path d="M12 5v14"/>
   </svg>
 );
 
-const SELF_CREDENTIAL_TYPES = [
+const XIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>
+  </svg>
+);
+
+const PaperclipIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+  </svg>
+);
+
+const CREDENTIAL_TYPES = [
   { value: "certificate", label: "Certificate" },
   { value: "license", label: "License / Permit" },
   { value: "document", label: "Personal Document" },
   { value: "award", label: "Award / Achievement" },
-  { value: "skill", label: "Skill / Competency" },
-  { value: "membership", label: "Membership" },
   { value: "other", label: "Other" },
 ];
 
@@ -126,9 +118,8 @@ export function UserPanel() {
   const [error, setError] = useState<string | null>(null);
   const [expandedCredId, setExpandedCredId] = useState<string | null>(null);
   const [copiedDid, setCopiedDid] = useState(false);
-  const [highlightCredId, setHighlightCredId] = useState<string | null>(null);
 
-  // Modal for full QR view
+  // QR modal
   const [modalCredential, setModalCredential] = useState<Credential | null>(null);
   const [modalOpenedAt, setModalOpenedAt] = useState(0);
 
@@ -136,15 +127,13 @@ export function UserPanel() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addingCredential, setAddingCredential] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-  const [selfCredentialType, setSelfCredentialType] = useState("certificate");
-  const [selfCredentialTitle, setSelfCredentialTitle] = useState("");
-  const [selfCredentialDescription, setSelfCredentialDescription] = useState("");
-  const [selfCredentialIssuedBy, setSelfCredentialIssuedBy] = useState("");
-  const [selfCredentialDate, setSelfCredentialDate] = useState("");
+  const [credType, setCredType] = useState("certificate");
+  const [credTitle, setCredTitle] = useState("");
+  const [credDescription, setCredDescription] = useState("");
+  const [credIssuedBy, setCredIssuedBy] = useState("");
+  const [credDate, setCredDate] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const newCredRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user?.did) loadCredentials();
@@ -163,55 +152,33 @@ export function UserPanel() {
     }
   };
 
-  const handleSelfIssue = async (e: React.FormEvent) => {
+  const handleAddCredential = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddingCredential(true);
     setAddError(null);
-
     try {
-      const result = await apiPost<Credential>("/credentials/self", {
-        credentialType: selfCredentialType,
+      await apiPost<Credential>("/credentials/self", {
+        credentialType: credType,
         credentialData: {
-          title: selfCredentialTitle,
-          description: selfCredentialDescription,
-          issuedBy: selfCredentialIssuedBy || "Self-attested",
-          dateIssued: selfCredentialDate || new Date().toISOString().split("T")[0],
+          title: credTitle,
+          description: credDescription,
+          issuedBy: credIssuedBy || "Self-attested",
+          dateIssued: credDate || new Date().toISOString().split("T")[0],
           ...(uploadedFile && { fileName: uploadedFile.name, fileSize: uploadedFile.size }),
         },
       });
-
-      // Reset form
-      setSelfCredentialTitle("");
-      setSelfCredentialDescription("");
-      setSelfCredentialIssuedBy("");
-      setSelfCredentialDate("");
-      setSelfCredentialType("certificate");
+      setCredTitle("");
+      setCredDescription("");
+      setCredIssuedBy("");
+      setCredDate("");
+      setCredType("certificate");
       setUploadedFile(null);
       setShowAddForm(false);
-
-      // Reload and highlight the new credential
       await loadCredentials();
-      const newId = result.credentialId;
-      setHighlightCredId(newId);
-      setExpandedCredId(newId);
-
-      // Scroll to the new credential
-      setTimeout(() => {
-        newCredRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(() => setHighlightCredId(null), 3000);
-      }, 100);
     } catch (e) {
       setAddError((e as Error).message);
     } finally {
       setAddingCredential(false);
-    }
-  };
-
-  const copyDid = () => {
-    if (user?.did) {
-      navigator.clipboard.writeText(user.did);
-      setCopiedDid(true);
-      setTimeout(() => setCopiedDid(false), 2000);
     }
   };
 
@@ -227,13 +194,21 @@ export function UserPanel() {
     }
   };
 
-  const isSelfAttested = (cred: Credential) => cred.issuerDid === cred.holderDid;
-  const validCount = credentials.filter(c => c.status === "valid").length;
-  const revokedCount = credentials.filter(c => c.status === "revoked").length;
+  const copyDid = () => {
+    if (user?.did) {
+      navigator.clipboard.writeText(user.did);
+      setCopiedDid(true);
+      setTimeout(() => setCopiedDid(false), 2000);
+    }
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedCredId(prev => prev === id ? null : id);
   };
+
+  const isSelfAttested = (cred: Credential) => cred.issuerDid === cred.holderDid;
+  const validCount = credentials.filter(c => c.status === "valid").length;
+  const revokedCount = credentials.filter(c => c.status === "revoked").length;
 
   return (
     <div className="panel">
@@ -242,7 +217,7 @@ export function UserPanel() {
         <div className="panel-icon"><FingerprintIcon /></div>
         <h2 className="panel-title">My Digital Identity</h2>
         <p className="panel-description">
-          Manage your decentralized identity and credential wallet.
+          Your decentralized identity and credential wallet.
         </p>
       </div>
 
@@ -254,7 +229,7 @@ export function UserPanel() {
               <div className="card-icon" style={{ width: 32, height: 32 }}><FingerprintIcon /></div>
               <div>
                 <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--gray-800)" }}>Your DID</div>
-                <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)" }}>Share with issuers to receive credentials</div>
+                <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)" }}>Share this with issuers to receive credentials</div>
               </div>
             </div>
             <button className="btn btn-secondary" onClick={copyDid}
@@ -290,7 +265,7 @@ export function UserPanel() {
         </div>
       </div>
 
-      {/* Credential Wallet */}
+      {/* Credentials List */}
       <div className="card">
         <div className="card-header">
           <div className="card-icon"><FileIcon /></div>
@@ -310,7 +285,7 @@ export function UserPanel() {
           </div>
         </div>
 
-        {/* ---- Add Credential Form ---- */}
+        {/* Add Credential Form */}
         {showAddForm && (
           <div style={{
             padding: "var(--space-5)", margin: "0 0 var(--space-5)",
@@ -323,12 +298,12 @@ export function UserPanel() {
                 style={{ padding: "2px 6px" }}><XIcon /></button>
             </div>
 
-            <form onSubmit={handleSelfIssue}>
+            <form onSubmit={handleAddCredential}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
                 <div className="input-group">
                   <label className="input-label">Type</label>
-                  <select className="input" value={selfCredentialType} onChange={(e) => setSelfCredentialType(e.target.value)}>
-                    {SELF_CREDENTIAL_TYPES.map((t) => (
+                  <select className="input" value={credType} onChange={(e) => setCredType(e.target.value)}>
+                    {CREDENTIAL_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
@@ -336,14 +311,14 @@ export function UserPanel() {
                 <div className="input-group">
                   <label className="input-label">Title *</label>
                   <input type="text" className="input" placeholder="e.g., AWS Solutions Architect"
-                    value={selfCredentialTitle} onChange={(e) => setSelfCredentialTitle(e.target.value)} required />
+                    value={credTitle} onChange={(e) => setCredTitle(e.target.value)} required />
                 </div>
               </div>
 
               <div className="input-group">
                 <label className="input-label">Description</label>
                 <textarea className="input" placeholder="Brief description..."
-                  value={selfCredentialDescription} onChange={(e) => setSelfCredentialDescription(e.target.value)}
+                  value={credDescription} onChange={(e) => setCredDescription(e.target.value)}
                   rows={2} style={{ resize: "vertical" }} />
               </div>
 
@@ -351,12 +326,12 @@ export function UserPanel() {
                 <div className="input-group">
                   <label className="input-label">Issued By</label>
                   <input type="text" className="input" placeholder="e.g., Amazon Web Services"
-                    value={selfCredentialIssuedBy} onChange={(e) => setSelfCredentialIssuedBy(e.target.value)} />
+                    value={credIssuedBy} onChange={(e) => setCredIssuedBy(e.target.value)} />
                 </div>
                 <div className="input-group">
                   <label className="input-label">Date Issued</label>
-                  <input type="date" className="input" value={selfCredentialDate}
-                    onChange={(e) => setSelfCredentialDate(e.target.value)} />
+                  <input type="date" className="input" value={credDate}
+                    onChange={(e) => setCredDate(e.target.value)} />
                 </div>
               </div>
 
@@ -392,9 +367,6 @@ export function UserPanel() {
                     <UploadIcon /> Upload file (PDF, image, document — max 10 MB)
                   </button>
                 )}
-                <div style={{ fontSize: "0.6875rem", color: "var(--gray-600)", marginTop: 4 }}>
-                  File will be referenced in the credential metadata.
-                </div>
               </div>
 
               {addError && (
@@ -404,7 +376,7 @@ export function UserPanel() {
               )}
 
               <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-3)" }}>
-                <button type="submit" className="btn btn-primary" disabled={addingCredential || !selfCredentialTitle}>
+                <button type="submit" className="btn btn-primary" disabled={addingCredential || !credTitle}>
                   {addingCredential ? (
                     <span className="loading"><span className="spinner" /> Adding...</span>
                   ) : (
@@ -420,7 +392,7 @@ export function UserPanel() {
           </div>
         )}
 
-        {/* ---- Credential List ---- */}
+        {/* Credential List */}
         <div className="card-body">
           {loading ? (
             <div style={{ textAlign: "center", padding: "var(--space-8)" }}>
@@ -437,28 +409,25 @@ export function UserPanel() {
               </div>
               <p style={{ fontSize: "0.875rem" }}>No credentials yet</p>
               <p style={{ fontSize: "0.8125rem", marginTop: "var(--space-1)" }}>
-                Click "Add" to self-attest a credential, or wait for an issuer to send you one.
+                Click "Add" to self-attest a credential, or share your DID with an issuer.
               </p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
               {credentials.map((cred) => {
                 const isExpanded = expandedCredId === cred.credentialId;
-                const isHighlighted = highlightCredId === cred.credentialId;
                 const verifyUrl = getVerificationUrl(cred.credentialId);
 
                 return (
                   <div key={cred.credentialId}
-                    ref={isHighlighted ? newCredRef : undefined}
                     style={{
                       borderRadius: "var(--radius-lg)",
-                      border: `1px solid ${isHighlighted ? "rgba(34, 197, 94, 0.3)" : "var(--surface-border)"}`,
-                      background: isHighlighted ? "var(--success-50)" : "var(--surface-card)",
-                      transition: "all 600ms ease",
+                      border: "1px solid var(--surface-border)",
+                      background: "var(--surface-card)",
                       overflow: "hidden",
-                      boxShadow: isHighlighted ? "0 0 16px rgba(34,197,94,0.08)" : "var(--shadow-sm)"
+                      boxShadow: "var(--shadow-sm)"
                     }}>
-                    {/* Credential header row — always visible */}
+                    {/* Credential row — always visible */}
                     <div style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       padding: "var(--space-3)", cursor: "pointer"
@@ -467,7 +436,7 @@ export function UserPanel() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: 2 }}>
                           <span style={{
-                            fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase",
+                            fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase" as const,
                             letterSpacing: "0.04em",
                             color: isSelfAttested(cred) ? "var(--brand-500)" : "var(--success-600)"
                           }}>
@@ -485,7 +454,7 @@ export function UserPanel() {
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                        {/* Small QR thumbnail */}
+                        {/* QR thumbnail */}
                         <img src={generateQRCodeURL(verifyUrl)} alt="QR"
                           style={{ width: 36, height: 36, borderRadius: 4, background: "white", padding: 2, cursor: "pointer" }}
                           onClick={(e) => {
@@ -614,7 +583,7 @@ export function UserPanel() {
               </div>
             </div>
 
-            <div style={{ padding: "0 var(--space-4) var(--space-4)", display: "flex", gap: "var(--space-2)" }}>
+            <div style={{ padding: "0 var(--space-4) var(--space-4)" }}>
               <button className="btn btn-primary w-full" style={{ fontSize: "0.8125rem" }}
                 onClick={() => { navigator.clipboard.writeText(getVerificationUrl(modalCredential.credentialId)); }}>
                 <CopyIcon /> Copy Verification Link

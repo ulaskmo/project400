@@ -68,6 +68,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [backendMode, setBackendMode] = useState<"demo" | "blockchain" | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [role, setRole] = useState<"holder" | "issuer" | "verifier">("holder");
+  const [organizationName, setOrganizationName] = useState("");
 
   useEffect(() => {
     fetch(`${API_BASE}/health`)
@@ -105,7 +107,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       if (isRegister) {
-        await register(email, password, "holder");
+        await register(email, password, role, (role !== "holder" && organizationName) ? organizationName : undefined);
       } else {
         await login(email, password);
       }
@@ -183,6 +185,47 @@ export function LoginPage() {
                     placeholder="John Doe" required
                     style={{ paddingLeft: 34 }} />
                 </div>
+              </div>
+            )}
+
+            {/* Role — register only */}
+            {isRegister && (
+              <div className="input-group">
+                <label className="input-label">I am registering as</label>
+                <div style={{ display: "flex", gap: 4, background: "var(--surface-inset)", borderRadius: "var(--radius-md)", padding: 3 }}>
+                  {([
+                    { value: "holder" as const, label: "Holder", desc: "Store credentials" },
+                    { value: "issuer" as const, label: "Issuer", desc: "Issue credentials" },
+                    { value: "verifier" as const, label: "Verifier", desc: "Verify credentials" },
+                  ]).map((opt) => (
+                    <button key={opt.value} type="button" onClick={() => setRole(opt.value)} style={{
+                      flex: 1, padding: "8px 4px", border: "none", borderRadius: "var(--radius-sm)",
+                      background: role === opt.value ? "var(--brand-700)" : "transparent",
+                      color: role === opt.value ? "#fff" : "var(--gray-500)",
+                      fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer",
+                      transition: "all 150ms ease", fontFamily: "inherit",
+                      boxShadow: role === opt.value ? "var(--shadow-sm)" : "none"
+                    }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: "0.6875rem", color: "var(--gray-500)", marginTop: 4 }}>
+                  {role === "holder" && "Store and manage your verifiable credentials"}
+                  {role === "issuer" && "Issue credentials to holders (e.g. university, employer)"}
+                  {role === "verifier" && "Verify credentials presented by holders"}
+                </div>
+              </div>
+            )}
+
+            {/* Organization Name — issuer/verifier only */}
+            {isRegister && role !== "holder" && (
+              <div className="input-group">
+                <label className="input-label">Organization Name</label>
+                <input type="text" className="input" value={organizationName}
+                  onChange={(e) => setOrganizationName(e.target.value)}
+                  placeholder={role === "issuer" ? "e.g., University of Dublin" : "e.g., VerifyTrust Ltd."}
+                  required />
               </div>
             )}
 

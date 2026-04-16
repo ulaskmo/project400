@@ -1,22 +1,37 @@
 import { Request, Response, NextFunction } from "express";
 import { register, login, getAllUsers, getUserById, UserRole } from "../services/authService";
 
-// Public registration - ONLY for holders
+// Public registration - holders, issuers, and verifiers
 export const handleRegister = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role, organizationName } = req.body;
 
     if (!email || !password) {
       res.status(400).json({ message: "Email and password are required" });
       return;
     }
 
-    // Public registration is ONLY for holders
-    const result = await register(email, password, "holder");
+    // Allow holder, issuer, verifier — but NOT admin via public registration
+    const allowedRoles: UserRole[] = ["holder", "issuer", "verifier"];
+    const userRole: UserRole = role || "holder";
+
+    if (!allowedRoles.includes(userRole)) {
+      res.status(400).json({ message: "Invalid role for public registration" });
+      return;
+    }
+
+    if ((userRole === "issuer" || userRole === "verifier") && !organizationName) {
+      res.status(400).json({
+        message: "Organization name required for issuer/verifier accounts"
+      });
+      return;
+    }
+
+    const result = await register(email, password, userRole, organizationName);
     res.status(201).json(result);
   } catch (error) {
     next(error);

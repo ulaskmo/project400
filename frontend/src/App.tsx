@@ -110,6 +110,13 @@ function MainApp() {
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
 
+  // Update active tab when user changes (e.g. after login)
+  useEffect(() => {
+    if (user) {
+      setActiveTab(getDefaultTab());
+    }
+  }, [user?.role]);
+
   // Show public verification page if URL contains verify parameter
   if (publicVerifyId) {
     return <PublicVerifyPage credentialId={publicVerifyId} />;

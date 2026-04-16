@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiPost, apiGet } from "../api/client";
 
@@ -14,20 +14,21 @@ type Credential = {
     description?: string;
     issuedBy?: string;
     expiresAt?: string;
+    fileName?: string;
   };
 };
+
+const SendIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>
+  </svg>
+);
 
 const FileIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
     <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
     <path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>
-  </svg>
-);
-
-const SendIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>
   </svg>
 );
 
@@ -54,12 +55,6 @@ const AlertCircleIcon = () => (
   </svg>
 );
 
-const InfoIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-  </svg>
-);
-
 const RefreshIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
@@ -73,41 +68,38 @@ const XCircleIcon = () => (
   </svg>
 );
 
-const ListIcon = () => (
+const UploadIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/>
-    <line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>
   </svg>
 );
 
-const CREDENTIAL_TYPES = [
-  { value: "diploma", label: "University Diploma" },
-  { value: "certificate", label: "Professional Certificate" },
-  { value: "employment", label: "Employment Verification" },
-  { value: "license", label: "Professional License" },
-  { value: "transcript", label: "Academic Transcript" },
-  { value: "training", label: "Training Completion" },
-  { value: "background", label: "Background Check" },
-  { value: "other", label: "Other" },
-];
+const PaperclipIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+  </svg>
+);
+
+const XIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+  </svg>
+);
 
 export function IssuerPanel() {
   const { user } = useAuth();
   const [issuedCredentials, setIssuedCredentials] = useState<Credential[]>([]);
-  const [credential, setCredential] = useState<Credential | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
-  
-  const [formData, setFormData] = useState({
-    holderDid: "",
-    credentialId: `cred-${Date.now()}`,
-    credentialType: "diploma",
-    subjectName: "",
-    description: "",
-    expiresAt: "",
-  });
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [holderDid, setHolderDid] = useState("");
+  const [documentName, setDocumentName] = useState("");
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
     loadIssuedCredentials();
@@ -125,41 +117,53 @@ export function IssuerPanel() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setError("File must be under 10 MB");
+        return;
+      }
+      setUploadedFile(file);
+      setError(null);
+    }
+  };
+
   const issueCredential = async () => {
-    if (!formData.holderDid) {
+    if (!holderDid.trim()) {
       setError("Please enter the holder's DID");
       return;
     }
-    if (!formData.subjectName) {
-      setError("Please enter the subject's name");
+    if (!documentName.trim()) {
+      setError("Please enter the document name");
       return;
     }
 
     setError(null);
+    setSuccess(null);
     setLoading(true);
     try {
+      const credentialId = `cred-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const body = {
-        credentialId: formData.credentialId,
-        holderDid: formData.holderDid,
-        ipfsHash: `Qm${btoa(formData.credentialId).slice(0, 40)}`,
+        credentialId,
+        holderDid: holderDid.trim(),
+        ipfsHash: `Qm${btoa(credentialId).slice(0, 40)}`,
         metadata: {
-          type: formData.credentialType,
-          subjectName: formData.subjectName,
-          description: formData.description || undefined,
+          type: "document",
+          subjectName: documentName.trim(),
+          description: uploadedFile ? `File: ${uploadedFile.name}` : undefined,
           issuedBy: user?.organizationName || user?.email,
-          expiresAt: formData.expiresAt || undefined,
+          expiresAt: undefined,
+          fileName: uploadedFile?.name,
         }
       };
-      const res = await apiPost<Credential>("/credentials", body);
-      setCredential(res);
-      setFormData({
-        ...formData,
-        credentialId: `cred-${Date.now()}`,
-        holderDid: "",
-        subjectName: "",
-        description: "",
-        expiresAt: "",
-      });
+      await apiPost<Credential>("/credentials", body);
+      setSuccess(`Credential "${documentName}" issued successfully to holder.`);
+      setHolderDid("");
+      setDocumentName("");
+      setIssueDate(new Date().toISOString().split("T")[0]);
+      setUploadedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       loadIssuedCredentials();
     } catch (e) {
       setError((e as Error).message);
@@ -170,7 +174,6 @@ export function IssuerPanel() {
 
   const handleRevoke = async (credentialId: string) => {
     if (!confirm(`Revoke credential ${credentialId}? This cannot be undone.`)) return;
-    
     setRevokingId(credentialId);
     try {
       await apiPost(`/credentials/${encodeURIComponent(credentialId)}/revoke`);
@@ -182,276 +185,217 @@ export function IssuerPanel() {
     }
   };
 
-  const getTypeLabel = (type?: string) => {
-    if (!type) return "Credential";
-    const found = CREDENTIAL_TYPES.find(t => t.value === type);
-    return found ? found.label : type;
-  };
-
   return (
     <div className="panel">
       <div className="panel-header">
         <div className="panel-icon issuer">
           <BuildingIcon />
         </div>
-        <h2 className="panel-title">Credential Issuer Portal</h2>
+        <h2 className="panel-title">Issue Credential</h2>
         <p className="panel-description">
-          Issue verifiable credentials to identity holders. Credentials are signed and anchored on blockchain.
+          Issue a verified document to a holder's DID. The credential will be anchored on blockchain.
         </p>
       </div>
 
-      <div className="stats-row">
-        <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--success-600)" }}>{issuedCredentials.length}</div>
-          <div className="stat-label">Total Issued</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--success-600)" }}>
-            {issuedCredentials.filter(c => c.status === "valid").length}
+      {/* Issue Form */}
+      <div className="card" style={{ marginBottom: "var(--space-6)" }}>
+        <div className="card-header">
+          <div className="card-icon success"><SendIcon /></div>
+          <div>
+            <h3 className="card-title">New Credential</h3>
+            <p className="card-subtitle">Fill in the details and issue</p>
           </div>
-          <div className="stat-label">Active</div>
         </div>
-        <div className="stat-item">
-          <div className="stat-value" style={{ color: "var(--danger-500)" }}>
-            {issuedCredentials.filter(c => c.status === "revoked").length}
-          </div>
-          <div className="stat-label">Revoked</div>
-        </div>
-      </div>
 
-      <div className="card-grid">
-        {/* Issue Credential Card */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-icon success">
-              <SendIcon />
-            </div>
-            <div>
-              <h3 className="card-title">Issue New Credential</h3>
-              <p className="card-subtitle">Create and sign a credential</p>
-            </div>
+        <div className="card-body">
+          <div className="input-group">
+            <label className="input-label">Holder's DID *</label>
+            <input
+              type="text"
+              className="input input-mono"
+              value={holderDid}
+              onChange={(e) => setHolderDid(e.target.value)}
+              placeholder="did:chainshield:..."
+            />
+            <p style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: "var(--space-1)" }}>
+              The holder can find their DID in their Identity Holder dashboard
+            </p>
           </div>
 
-          <div className="card-body">
-            <div className="input-group">
-              <label className="input-label">Holder's DID *</label>
-              <input
-                type="text"
-                className="input input-mono"
-                value={formData.holderDid}
-                onChange={(e) => setFormData((f) => ({ ...f, holderDid: e.target.value }))}
-                placeholder="did:chainshield:..."
-              />
-              <p style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: "var(--space-1)" }}>
-                Get this from the credential holder
-              </p>
-            </div>
+          <div className="input-group">
+            <label className="input-label">Document Name *</label>
+            <input
+              type="text"
+              className="input"
+              value={documentName}
+              onChange={(e) => setDocumentName(e.target.value)}
+              placeholder="e.g., Bachelor of Science Diploma"
+            />
+          </div>
 
-            <div className="input-group">
-              <label className="input-label">Subject Name *</label>
-              <input
-                type="text"
-                className="input"
-                value={formData.subjectName}
-                onChange={(e) => setFormData((f) => ({ ...f, subjectName: e.target.value }))}
-                placeholder="e.g., John Doe"
-              />
-            </div>
+          <div className="input-group">
+            <label className="input-label">Date</label>
+            <input
+              type="date"
+              className="input"
+              value={issueDate}
+              onChange={(e) => setIssueDate(e.target.value)}
+            />
+          </div>
 
-            <div className="input-group">
-              <label className="input-label">Credential Type</label>
-              <select
-                className="input"
-                value={formData.credentialType}
-                onChange={(e) => setFormData((f) => ({ ...f, credentialType: e.target.value }))}
-              >
-                {CREDENTIAL_TYPES.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Description</label>
-              <textarea
-                className="input"
-                value={formData.description}
-                onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
-                placeholder="e.g., Bachelor of Science in Computer Science, Class of 2025"
-                rows={2}
-                style={{ resize: "vertical" }}
-              />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
-              <div className="input-group">
-                <label className="input-label">Credential ID</label>
-                <input
-                  type="text"
-                  className="input input-mono"
-                  value={formData.credentialId}
-                  onChange={(e) => setFormData((f) => ({ ...f, credentialId: e.target.value }))}
-                  placeholder="Unique identifier"
-                />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Expiry Date</label>
-                <input
-                  type="date"
-                  className="input"
-                  value={formData.expiresAt}
-                  onChange={(e) => setFormData((f) => ({ ...f, expiresAt: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <button
-              className="btn btn-success btn-lg w-full"
-              onClick={issueCredential}
-              disabled={loading}
-              style={{ marginTop: "var(--space-4)" }}
-            >
-              {loading ? (
-                <span className="loading"><span className="spinner" />Issuing...</span>
-              ) : (
-                <><SendIcon /> Issue Credential</>
-              )}
-            </button>
-
-            {credential && (
-              <div className="result-card success" style={{ marginTop: "var(--space-4)" }}>
-                <div className="result-header">
-                  <div className="result-icon success"><CheckCircleIcon /></div>
-                  <div className="result-title">Credential Issued!</div>
+          {/* File Upload */}
+          <div className="input-group">
+            <label className="input-label">Attach Document</label>
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect}
+              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style={{ display: "none" }} />
+            {uploadedFile ? (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "var(--space-2) var(--space-3)",
+                background: "var(--brand-50)", border: "1px solid var(--brand-200)",
+                borderRadius: "var(--radius-md)", fontSize: "0.8125rem"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", color: "var(--gray-700)" }}>
+                  <span style={{ width: 16, height: 16, color: "var(--brand-600)" }}><PaperclipIcon /></span>
+                  <span style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {uploadedFile.name}
+                  </span>
+                  <span style={{ color: "var(--gray-500)", fontSize: "0.75rem" }}>
+                    ({(uploadedFile.size / 1024).toFixed(0)} KB)
+                  </span>
                 </div>
-                <p style={{ fontSize: "0.875rem", color: "var(--gray-400)" }}>
-                  ID: {credential.credentialId}
-                </p>
-              </div>
-            )}
-
-            {error && (
-              <div className="error-message" style={{ marginTop: "var(--space-4)" }}>
-                <AlertCircleIcon /><span>{error}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Issued Credentials List */}
-        <div className="card">
-          <div className="card-header">
-            <div className="card-icon">
-              <ListIcon />
-            </div>
-            <div style={{ flex: 1 }}>
-              <h3 className="card-title">Issued Credentials</h3>
-              <p className="card-subtitle">Credentials you've issued</p>
-            </div>
-            <button 
-              className="btn btn-secondary" 
-              onClick={loadIssuedCredentials}
-              disabled={loadingList}
-              style={{ padding: "var(--space-2) var(--space-3)" }}
-            >
-              <RefreshIcon />
-            </button>
-          </div>
-
-          <div className="card-body" style={{ maxHeight: 500, overflowY: "auto" }}>
-            {loadingList ? (
-              <div style={{ textAlign: "center", padding: "var(--space-6)" }}>
-                <span className="loading"><span className="spinner" /></span>
-              </div>
-            ) : issuedCredentials.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "var(--space-6)", color: "var(--gray-500)" }}>
-                <FileIcon />
-                <p style={{ marginTop: "var(--space-2)" }}>No credentials issued yet</p>
+                <button type="button" className="btn btn-secondary"
+                  onClick={() => { setUploadedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  style={{ padding: "2px 6px" }}><XIcon /></button>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-                {issuedCredentials.map((cred) => (
-                  <div 
-                    key={cred.credentialId}
-                    style={{
-                      padding: "var(--space-4)",
-                      background: "var(--surface-inset)",
-                      borderRadius: "var(--radius-md)",
-                      border: "1px solid var(--surface-border)"
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-1)" }}>
-                          <span style={{ 
-                            fontSize: "0.7rem", 
-                            color: "var(--success-600)", 
-                            fontWeight: 600,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                          }}>
-                            {getTypeLabel(cred.metadata?.type)}
-                          </span>
-                        </div>
-                        <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--gray-800)" }}>
-                          {cred.credentialId}
-                        </div>
-                        {cred.metadata?.subjectName && (
-                          <div style={{ fontSize: "0.8125rem", color: "var(--gray-600)", marginTop: "var(--space-1)" }}>
-                            Subject: {cred.metadata.subjectName}
-                          </div>
-                        )}
-                        <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: "var(--space-1)" }}>
-                          To: {cred.holderDid.slice(0, 30)}...
-                        </div>
-                        {cred.metadata?.description && (
-                          <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: "var(--space-1)", fontStyle: "italic" }}>
-                            {cred.metadata.description}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "var(--space-2)" }}>
-                        <span className={`status-badge ${cred.status === "valid" ? "valid" : "invalid"}`}>
-                          <span className="status-dot" />
-                          {cred.status}
-                        </span>
-                        {cred.status === "valid" && (
-                          <button
-                            className="btn btn-secondary"
-                            style={{ 
-                              padding: "4px 10px", 
-                              fontSize: "0.7rem",
-                              color: "var(--danger-400)",
-                              borderColor: "rgba(239, 68, 68, 0.3)",
-                            }}
-                            onClick={() => handleRevoke(cred.credentialId)}
-                            disabled={revokingId === cred.credentialId}
-                          >
-                            {revokingId === cred.credentialId ? (
-                              <span className="loading"><span className="spinner" style={{ width: 12, height: 12 }} /></span>
-                            ) : (
-                              <><XCircleIcon /> Revoke</>
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button type="button" className="btn btn-secondary w-full"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ justifyContent: "center", borderStyle: "dashed" }}>
+                <UploadIcon /> Upload file (PDF, image, document — max 10 MB)
+              </button>
             )}
           </div>
+
+          <button
+            className="btn btn-success btn-lg w-full"
+            onClick={issueCredential}
+            disabled={loading}
+            style={{ marginTop: "var(--space-4)" }}
+          >
+            {loading ? (
+              <span className="loading"><span className="spinner" />Issuing...</span>
+            ) : (
+              <><SendIcon /> Issue Credential</>
+            )}
+          </button>
+
+          {success && (
+            <div className="result-card success" style={{ marginTop: "var(--space-4)" }}>
+              <div className="result-header">
+                <div className="result-icon success"><CheckCircleIcon /></div>
+                <div className="result-title">{success}</div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="error-message" style={{ marginTop: "var(--space-4)" }}>
+              <AlertCircleIcon /><span>{error}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="info-box">
-        <div className="info-box-icon"><InfoIcon /></div>
-        <div className="info-box-content">
-          <strong>How to issue a credential:</strong><br />
-          1. Get the holder's DID (they can find it in their Identity Holder dashboard)<br />
-          2. Fill in the subject name and credential details<br />
-          3. Click "Issue Credential" - it will be signed with your issuer key and stored on blockchain<br />
-          4. To revoke a credential, click the "Revoke" button next to it
+      {/* Issued Credentials List */}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-icon"><FileIcon /></div>
+          <div style={{ flex: 1 }}>
+            <h3 className="card-title">Issued Credentials</h3>
+            <p className="card-subtitle">{issuedCredentials.length} credential{issuedCredentials.length !== 1 ? "s" : ""} issued</p>
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={loadIssuedCredentials}
+            disabled={loadingList}
+            style={{ padding: "var(--space-2) var(--space-3)" }}
+          >
+            <RefreshIcon />
+          </button>
+        </div>
+
+        <div className="card-body" style={{ maxHeight: 500, overflowY: "auto" }}>
+          {loadingList ? (
+            <div style={{ textAlign: "center", padding: "var(--space-6)" }}>
+              <span className="loading"><span className="spinner" /></span>
+            </div>
+          ) : issuedCredentials.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "var(--space-6)", color: "var(--gray-500)" }}>
+              <div style={{ width: 48, height: 48, margin: "0 auto var(--space-3)", background: "var(--surface-inset)", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <FileIcon />
+              </div>
+              <p>No credentials issued yet</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+              {issuedCredentials.map((cred) => (
+                <div
+                  key={cred.credentialId}
+                  style={{
+                    padding: "var(--space-4)",
+                    background: "var(--surface-inset)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--surface-border)"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--gray-800)", marginBottom: "var(--space-1)" }}>
+                        {cred.metadata?.subjectName || cred.credentialId}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>
+                        To: <span style={{ fontFamily: "var(--font-mono)" }}>{cred.holderDid.length > 35 ? cred.holderDid.slice(0, 35) + "..." : cred.holderDid}</span>
+                      </div>
+                      {cred.metadata?.description && (
+                        <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: 2, fontStyle: "italic" }}>
+                          {cred.metadata.description}
+                        </div>
+                      )}
+                      <div style={{ fontSize: "0.6875rem", color: "var(--gray-400)", marginTop: 4, fontFamily: "var(--font-mono)" }}>
+                        ID: {cred.credentialId}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "var(--space-2)" }}>
+                      <span className={`status-badge ${cred.status === "valid" ? "valid" : "invalid"}`}>
+                        <span className="status-dot" />
+                        {cred.status}
+                      </span>
+                      {cred.status === "valid" && (
+                        <button
+                          className="btn btn-secondary"
+                          style={{
+                            padding: "4px 10px",
+                            fontSize: "0.7rem",
+                            color: "var(--danger-400)",
+                            borderColor: "rgba(239, 68, 68, 0.3)",
+                          }}
+                          onClick={() => handleRevoke(cred.credentialId)}
+                          disabled={revokingId === cred.credentialId}
+                        >
+                          {revokingId === cred.credentialId ? (
+                            <span className="loading"><span className="spinner" style={{ width: 12, height: 12 }} /></span>
+                          ) : (
+                            <><XCircleIcon /> Revoke</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
