@@ -102,6 +102,13 @@ You should see `[DID Service]` and `[Credential Service]` without "DEMO MODE" â€
 
 **Optional:** Generate a new test wallet: `node scripts/create-test-wallet.js`
 
+## QR Codes & Phone Scanning
+
+QR codes embed a verification URL. On localhost, that URL won't work when scanned from a phone. To fix:
+
+1. **Deploy the frontend** (Vercel, Netlify, etc.) and set `VITE_APP_URL=https://your-app.vercel.app` in the build environment.
+2. **Or use ngrok for local testing:** `ngrok http 5173`, then create `frontend/.env.local` with `VITE_APP_URL=https://your-ngrok-url.ngrok.io` and restart the dev server.
+
 ## Project Structure
 
 ```

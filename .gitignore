@@ -36,4 +36,15 @@ Thumbs.db
 tmp/
 temp/
 
+# Backend user data (persisted users)
+backend/data/
 
+# Hardhat
+contracts/cache/
+contracts/artifacts/
+
+# Docker
+.docker/
+
+# Claude Code
+.claude/
