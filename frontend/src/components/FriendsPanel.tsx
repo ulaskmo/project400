@@ -512,13 +512,20 @@ function ConversationView({ friend, onBack }: { friend: Friend; onBack: () => vo
   useEffect(() => {
     load();
     apiGet<Credential[]>("/credentials/my").then(setMyCredentials).catch(() => {});
-  }, [load]);
+    // Mark any unread messages from this friend as read as soon as the
+    // conversation is opened. Errors are ignored (endpoint is idempotent).
+    apiPost(`/social/messages/${friend.userId}/read`, {}).catch(() => {});
+  }, [load, friend.userId]);
 
   useEffect(() => {
-    // poll for new messages every 5s while the view is open
-    const id = setInterval(load, 5000);
+    // poll for new messages every 5s while the view is open, and keep
+    // marking them read so the unread badge clears while chatting.
+    const id = setInterval(() => {
+      load();
+      apiPost(`/social/messages/${friend.userId}/read`, {}).catch(() => {});
+    }, 5000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, friend.userId]);
 
   useEffect(() => {
     // auto-scroll to bottom when messages change

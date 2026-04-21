@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WalletPanel } from "./WalletPanel";
 import { FriendsPanel } from "./FriendsPanel";
 import { HolderPresentationInbox } from "./HolderPresentationInbox";
 import { FlowPanel } from "./FlowPanel";
+import { apiGet } from "../api/client";
 
 const FingerprintIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -46,6 +47,57 @@ type SubTab = "wallet" | "flow" | "inbox" | "friends";
 
 export function UserPanel() {
   const [subTab, setSubTab] = useState<SubTab>("wallet");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const prevUnreadRef = useRef(0);
+
+  useEffect(() => {
+    let stopped = false;
+
+    const fetchUnread = async () => {
+      try {
+        const data = await apiGet<{ count: number }>(
+          "/social/messages/unread-count"
+        );
+        if (stopped) return;
+
+        const newCount = data.count ?? 0;
+        const prev = prevUnreadRef.current;
+
+        // If the Friends tab is open, new messages are being read immediately,
+        // so don't spam toasts. Only surface a toast when count goes up AND
+        // we're on another tab.
+        if (newCount > prev && subTab !== "friends") {
+          const delta = newCount - prev;
+          setToast(
+            `${delta} new message${delta === 1 ? "" : "s"} waiting in Friends`
+          );
+          setTimeout(() => setToast(null), 4000);
+        }
+
+        prevUnreadRef.current = newCount;
+        setUnreadCount(newCount);
+      } catch {
+        // silently ignore – user may not have Supabase social configured.
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 8000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
+  }, [subTab]);
+
+  // Clear the badge the moment the user navigates into Friends; the
+  // ConversationView will mark messages as read on the backend too.
+  useEffect(() => {
+    if (subTab === "friends") {
+      setUnreadCount(0);
+      prevUnreadRef.current = 0;
+    }
+  }, [subTab]);
 
   const titles: Record<SubTab, { title: string; description: string }> = {
     wallet: {
@@ -117,6 +169,28 @@ export function UserPanel() {
           onClick={() => setSubTab("friends")}>
           <span style={{ width: 16, height: 16 }}><UsersIcon /></span>
           Friends
+          {unreadCount > 0 && (
+            <span
+              style={{
+                marginLeft: 4,
+                minWidth: 18,
+                height: 18,
+                padding: "0 6px",
+                borderRadius: 999,
+                background: "var(--danger-500, #ef4444)",
+                color: "white",
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 0 2px var(--surface-card, #fff)",
+                animation: "chainshield-pulse 1.8s ease-in-out infinite",
+              }}
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -124,6 +198,50 @@ export function UserPanel() {
       {subTab === "flow" && <FlowPanel />}
       {subTab === "inbox" && <HolderPresentationInbox />}
       {subTab === "friends" && <FriendsPanel />}
+
+      {toast && (
+        <div
+          onClick={() => setSubTab("friends")}
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+            padding: "12px 16px",
+            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            color: "white",
+            borderRadius: 12,
+            boxShadow: "0 10px 30px rgba(99, 102, 241, 0.35)",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            animation: "chainshield-slide-in 220ms ease-out",
+          }}
+          role="status"
+        >
+          <span style={{ fontSize: "1.1rem" }}>💬</span>
+          <div>
+            <div>{toast}</div>
+            <div style={{ fontSize: "0.7rem", opacity: 0.85, marginTop: 2 }}>
+              Click to open
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes chainshield-pulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 0 2px var(--surface-card, #fff), 0 0 0 0 rgba(239,68,68,0.6); }
+          50% { transform: scale(1.06); box-shadow: 0 0 0 2px var(--surface-card, #fff), 0 0 0 6px rgba(239,68,68,0.0); }
+        }
+        @keyframes chainshield-slide-in {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

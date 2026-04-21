@@ -198,19 +198,24 @@ export function WalletPanel() {
   };
 
   useEffect(() => {
-    if (user?.did) loadCredentials();
+    if (!user?.did) return;
+    loadCredentials();
+    // Auto-refresh silently every 15s so trust-level changes from admins
+    // and new issuances appear without the user having to click refresh.
+    const interval = setInterval(() => loadCredentials(true), 15000);
+    return () => clearInterval(interval);
   }, [user?.did]);
 
-  const loadCredentials = async () => {
-    setLoading(true);
+  const loadCredentials = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const data = await apiGet<Credential[]>("/credentials/my");
       setCredentials(data);
     } catch (e) {
-      setError((e as Error).message);
+      if (!silent) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
