@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { TechOrbit } from "./TechOrbit";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 
@@ -123,13 +124,44 @@ export function LoginPage() {
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   return (
-    <div className="app-container" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div
+      className="app-container"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <div className="bg-animation" />
 
-      <div style={{
-        position: "relative", zIndex: 10, width: "100%",
-        maxWidth: isRegister ? 440 : 400, padding: "var(--space-6)"
-      }}>
+      <div
+        className="login-shell"
+        style={{
+          position: "relative",
+          zIndex: 10,
+          width: "100%",
+          maxWidth: 1200,
+          padding: "var(--space-6)",
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr)",
+          gap: "var(--space-8)",
+          alignItems: "center",
+        }}
+      >
+        <style>{`
+          @media (min-width: 960px) {
+            .login-shell {
+              grid-template-columns: minmax(0, 440px) minmax(0, 1fr) !important;
+              gap: var(--space-10) !important;
+            }
+            .login-orbit {
+              display: flex !important;
+            }
+          }
+        `}</style>
+
+        {/* Left column - form */}
+        <div style={{ width: "100%", maxWidth: isRegister ? 440 : 400, justifySelf: "center" }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "var(--space-8)" }}>
           <img src="/chainshield.png" alt="ChainShield"
@@ -418,6 +450,48 @@ export function LoginPage() {
             </span>
           </div>
         )}
+        </div>
+
+        {/* Right column - tech orbit (hidden on small screens) */}
+        <div
+          className="login-orbit"
+          style={{
+            display: "none",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "var(--space-6)",
+          }}
+        >
+          <div style={{ textAlign: "center", maxWidth: 520 }}>
+            <h2
+              style={{
+                fontSize: "1.6rem",
+                fontWeight: 700,
+                color: "var(--gray-50, #f8fafc)",
+                margin: 0,
+                letterSpacing: "-0.01em",
+                textShadow: "0 2px 24px rgba(59,130,246,0.25)",
+              }}
+            >
+              Built on open standards
+            </h2>
+            <p
+              style={{
+                margin: "8px auto 0",
+                fontSize: "0.85rem",
+                color: "rgba(226,232,240,0.75)",
+                maxWidth: 420,
+                lineHeight: 1.55,
+              }}
+            >
+              ChainShield ties together W3C Verifiable Credentials, DIDs,
+              Ed25519 integrity proofs, SSI principles, a holder-owned
+              wallet, and blockchain anchoring - orbiting a single identity.
+            </p>
+          </div>
+          <TechOrbit />
+        </div>
       </div>
     </div>
   );
