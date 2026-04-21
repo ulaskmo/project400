@@ -49,6 +49,14 @@ export const handlePublicVerify = async (
       status: result.status,
       message: result.details,
       issuer: result.issuer?.did,
+      issuerName: result.issuer?.name,
+      issuerRole: result.issuer?.role,
+      issuerTrustLevel: result.issuer?.trustLevel,
+      holder: result.holder?.did,
+      credentialType: result.metadata?.type,
+      subjectName: result.metadata?.subjectName,
+      description: result.metadata?.description,
+      expiresAt: result.metadata?.expiresAt,
       verifiedAt: result.timestamp,
     });
   } catch (error) {

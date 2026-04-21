@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiGet, apiPost } from "../api/client";
+import type { TrustLevel } from "../api/client";
 import { getVerificationUrl } from "../utils/url";
+import { TrustBadge } from "./TrustBadge";
 
 type Credential = {
   credentialId: string;
@@ -17,6 +19,9 @@ type Credential = {
     issuedBy?: string;
     expiresAt?: string;
   };
+  issuerTrustLevel?: TrustLevel;
+  issuerName?: string;
+  issuerRole?: string;
 };
 
 const generateQRCodeURL = (data: string): string => {
@@ -447,12 +452,15 @@ export function WalletPanel() {
                           <span className={`status-badge ${cred.status === "valid" ? "valid" : "invalid"}`}>
                             <span className="status-dot" />{cred.status}
                           </span>
+                          {!isSelfAttested(cred) && (
+                            <TrustBadge level={cred.issuerTrustLevel} />
+                          )}
                         </div>
                         <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--gray-800)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {cred.metadata?.subjectName || cred.credentialId}
                         </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: 1 }}>
-                          {cred.metadata?.issuedBy || (isSelfAttested(cred) ? "Self-attested" : cred.issuerDid.slice(0, 30) + "...")}
+                          {cred.metadata?.issuedBy || cred.issuerName || (isSelfAttested(cred) ? "Self-attested" : cred.issuerDid.slice(0, 30) + "...")}
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>

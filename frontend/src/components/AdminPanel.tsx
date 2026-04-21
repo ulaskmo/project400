@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import type { UserRole } from "../api/client";
+import type { UserRole, TrustLevel } from "../api/client";
 import { apiGet, apiPost } from "../api/client";
+import { TrustBadge, describeTrustLevel } from "./TrustBadge";
 
 interface UserData {
   id: string;
@@ -10,6 +11,8 @@ interface UserData {
   did?: string;
   organizationName?: string;
   createdAt: string;
+  trustLevel?: TrustLevel;
+  trustNote?: string;
 }
 
 interface SystemStats {
@@ -86,7 +89,7 @@ const RefreshIcon = () => (
   </svg>
 );
 
-type AdminTab = "overview" | "users" | "credentials";
+type AdminTab = "overview" | "users" | "trust" | "credentials";
 
 export function AdminPanel() {
   useAuth();
@@ -106,6 +109,31 @@ export function AdminPanel() {
     role: "issuer" as UserRole,
     organizationName: "",
   });
+  const [savingTrustFor, setSavingTrustFor] = useState<string | null>(null);
+  const [trustNoteDraft, setTrustNoteDraft] = useState<Record<string, string>>({});
+
+  const updateTrustLevel = async (
+    userId: string,
+    level: TrustLevel,
+    note?: string
+  ) => {
+    setSavingTrustFor(userId);
+    setError(null);
+    try {
+      await apiPost(`/auth/users/${userId}/trust-level`, { level, note });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, trustLevel: level, trustNote: note } : u
+        )
+      );
+      setSuccess(`Trust level updated to "${level}"`);
+      setTimeout(() => setSuccess(null), 2500);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingTrustFor(null);
+    }
+  };
 
   useEffect(() => {
     loadStats();
@@ -191,10 +219,11 @@ export function AdminPanel() {
       </div>
 
       {/* Admin Sub-tabs */}
-      <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-6)", justifyContent: "center" }}>
+      <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-6)", justifyContent: "center", flexWrap: "wrap" }}>
         {([
           { id: "overview" as AdminTab, label: "System Overview", icon: <DatabaseIcon /> },
           { id: "users" as AdminTab, label: "User Management", icon: <UsersIcon /> },
+          { id: "trust" as AdminTab, label: "Trust Registry", icon: <ShieldIcon /> },
           { id: "credentials" as AdminTab, label: "Credentials", icon: <FileIcon /> },
         ]).map(tab => (
           <button
@@ -377,9 +406,14 @@ export function AdminPanel() {
                           </div>
                         )}
                       </div>
-                      <span className={`status-badge ${getRoleBadgeClass(u.role)}`}>
-                        <span className="status-dot" />{u.role}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {(u.role === "issuer" || u.role === "verifier") && (
+                          <TrustBadge level={u.trustLevel} />
+                        )}
+                        <span className={`status-badge ${getRoleBadgeClass(u.role)}`}>
+                          <span className="status-dot" />{u.role}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -432,6 +466,154 @@ export function AdminPanel() {
               </form>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Trust Registry Tab */}
+      {activeTab === "trust" && (
+        <div className="card">
+          <div className="card-header">
+            <div className="card-icon" style={{ background: "var(--success-50)", color: "var(--success-600)" }}>
+              <ShieldIcon />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h3 className="card-title">Trust Registry</h3>
+              <p className="card-subtitle">
+                Assign trust levels to issuers and verifiers. Verifiers display these badges when checking credentials.
+              </p>
+            </div>
+            <button className="btn btn-secondary" onClick={loadUsers} style={{ padding: "var(--space-2) var(--space-3)" }}>
+              <RefreshIcon />
+            </button>
+          </div>
+
+          <div className="card-body">
+            {/* Legend */}
+            <div
+              style={{
+                display: "flex",
+                gap: "var(--space-3)",
+                flexWrap: "wrap",
+                marginBottom: "var(--space-4)",
+                padding: "var(--space-3)",
+                background: "var(--surface-inset)",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--surface-border)",
+              }}
+            >
+              {(["unverified", "verified", "accredited"] as TrustLevel[]).map((lvl) => (
+                <div key={lvl} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <TrustBadge level={lvl} />
+                  <span style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>
+                    {describeTrustLevel(lvl)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Only issuers + verifiers need trust management */}
+            {users
+              .filter((u) => u.role === "issuer" || u.role === "verifier")
+              .length === 0 ? (
+              <p style={{ color: "var(--gray-500)", textAlign: "center", padding: "var(--space-6)" }}>
+                No issuers or verifiers to manage.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", maxHeight: 520, overflowY: "auto" }}>
+                {users
+                  .filter((u) => u.role === "issuer" || u.role === "verifier")
+                  .map((u) => {
+                    const current = (u.trustLevel ?? "unverified") as TrustLevel;
+                    const isSaving = savingTrustFor === u.id;
+                    return (
+                      <div
+                        key={u.id}
+                        style={{
+                          padding: "var(--space-4)",
+                          background: "var(--surface-inset)",
+                          borderRadius: "var(--radius-md)",
+                          border: "1px solid var(--surface-border)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "var(--space-3)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "var(--space-3)", flexWrap: "wrap" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, color: "var(--gray-800)" }}>
+                              {u.organizationName || u.email}
+                            </div>
+                            {u.organizationName && (
+                              <div style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>
+                                {u.email}
+                              </div>
+                            )}
+                            {u.did && (
+                              <div style={{ fontSize: "0.7rem", color: "var(--gray-600)", fontFamily: "var(--font-mono)", marginTop: 2, wordBreak: "break-all" }}>
+                                {u.did}
+                              </div>
+                            )}
+                            {u.trustNote && (
+                              <div style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: 6, fontStyle: "italic" }}>
+                                Note: {u.trustNote}
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span className={`status-badge ${getRoleBadgeClass(u.role)}`}>
+                              <span className="status-dot" />{u.role}
+                            </span>
+                            <TrustBadge level={current} />
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          <label style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>
+                            Set level:
+                          </label>
+                          {(["unverified", "verified", "accredited"] as TrustLevel[]).map((lvl) => (
+                            <button
+                              key={lvl}
+                              className={`btn ${current === lvl ? "btn-primary" : "btn-secondary"}`}
+                              disabled={isSaving || current === lvl}
+                              onClick={() =>
+                                updateTrustLevel(
+                                  u.id,
+                                  lvl,
+                                  trustNoteDraft[u.id] ?? u.trustNote
+                                )
+                              }
+                              style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                            >
+                              {lvl}
+                            </button>
+                          ))}
+                          <input
+                            type="text"
+                            placeholder="Optional note (e.g. 'QAA-accredited UK university')"
+                            defaultValue={u.trustNote ?? ""}
+                            onChange={(e) =>
+                              setTrustNoteDraft((prev) => ({
+                                ...prev,
+                                [u.id]: e.target.value,
+                              }))
+                            }
+                            className="input"
+                            style={{ flex: 1, minWidth: 220, fontSize: "0.8rem", padding: "4px 8px" }}
+                          />
+                          {isSaving && (
+                            <span className="loading" style={{ fontSize: "0.75rem" }}>
+                              <span className="spinner" /> Saving...
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

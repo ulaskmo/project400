@@ -6,9 +6,11 @@ import { createDid } from "./didService";
 import { sendPasswordResetEmail } from "./emailService";
 import {
   StoredUser,
+  TrustLevel,
   loadAllUsers,
   getUserByEmailFromStore,
   getUserByIdFromStore,
+  getUserByDidFromStore,
   insertUser,
   updateUser,
   ensureDefaultAdmin,
@@ -30,6 +32,8 @@ export interface User {
   did?: string;
   organizationName?: string;
   createdAt: Date;
+  trustLevel?: TrustLevel;
+  trustNote?: string;
 }
 
 export interface AuthResponse {
@@ -40,6 +44,7 @@ export interface AuthResponse {
     role: UserRole;
     did?: string;
     organizationName?: string;
+    trustLevel?: TrustLevel;
   };
 }
 
@@ -52,6 +57,8 @@ function toUser(stored: StoredUser): User {
     did: stored.did,
     organizationName: stored.organizationName,
     createdAt: new Date(stored.createdAt),
+    trustLevel: stored.trustLevel ?? "unverified",
+    trustNote: stored.trustNote,
   };
 }
 
@@ -152,6 +159,11 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   return stored ? toUser(stored) : null;
 };
 
+export const getUserByDid = async (did: string): Promise<User | null> => {
+  const stored = await getUserByDidFromStore(did);
+  return stored ? toUser(stored) : null;
+};
+
 export const updateUserDid = async (
   userId: string,
   did: string
@@ -191,7 +203,23 @@ const sanitizeUser = (user: User) => ({
   role: user.role,
   did: user.did,
   organizationName: user.organizationName,
+  trustLevel: user.trustLevel ?? "unverified",
 });
+
+export const setTrustLevel = async (
+  userId: string,
+  level: TrustLevel,
+  note?: string
+): Promise<User | null> => {
+  if (!["unverified", "verified", "accredited"].includes(level)) {
+    throw new Error("Invalid trust level");
+  }
+  const stored = await updateUser(userId, {
+    trustLevel: level,
+    trustNote: note ?? undefined,
+  });
+  return stored ? toUser(stored) : null;
+};
 
 // ---------- Password reset ----------
 

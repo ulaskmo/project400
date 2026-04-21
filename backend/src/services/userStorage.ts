@@ -6,6 +6,8 @@ import { env } from "../config/env";
 const DATA_DIR = join(process.cwd(), "data");
 const USERS_FILE = join(DATA_DIR, "users.json");
 
+export type TrustLevel = "unverified" | "verified" | "accredited";
+
 export interface StoredUser {
   id: string;
   email: string;
@@ -14,6 +16,8 @@ export interface StoredUser {
   did?: string;
   organizationName?: string;
   createdAt: string;
+  trustLevel?: TrustLevel;
+  trustNote?: string;
 }
 
 interface UserRow {
@@ -24,6 +28,8 @@ interface UserRow {
   did: string | null;
   organization_name: string | null;
   created_at: string;
+  trust_level?: string | null;
+  trust_note?: string | null;
 }
 
 const isSupabaseEnabled = Boolean(env.supabaseUrl && env.supabaseServiceRoleKey);
@@ -47,6 +53,8 @@ function rowToUser(row: UserRow): StoredUser {
     did: row.did ?? undefined,
     organizationName: row.organization_name ?? undefined,
     createdAt: row.created_at,
+    trustLevel: (row.trust_level as TrustLevel | undefined) ?? "unverified",
+    trustNote: row.trust_note ?? undefined,
   };
 }
 
@@ -59,6 +67,8 @@ function userToRow(user: StoredUser): UserRow {
     did: user.did ?? null,
     organization_name: user.organizationName ?? null,
     created_at: user.createdAt,
+    trust_level: user.trustLevel ?? "unverified",
+    trust_note: user.trustNote ?? null,
   };
 }
 
@@ -139,6 +149,26 @@ export async function getUserByIdFromStore(id: string): Promise<StoredUser | nul
   return data ? rowToUser(data as UserRow) : null;
 }
 
+export async function getUserByDidFromStore(
+  did: string
+): Promise<StoredUser | null> {
+  if (!supabase) {
+    return loadFromFile().find((u) => u.did === did) ?? null;
+  }
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("did", did)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[UserStorage] Supabase getUserByDid failed:", error.message);
+    return null;
+  }
+  return data ? rowToUser(data as UserRow) : null;
+}
+
 export async function insertUser(user: StoredUser): Promise<void> {
   if (!supabase) {
     const users = loadFromFile();
@@ -159,7 +189,12 @@ export async function insertUser(user: StoredUser): Promise<void> {
 
 export async function updateUser(
   id: string,
-  updates: Partial<Pick<StoredUser, "did" | "organizationName" | "password">>
+  updates: Partial<
+    Pick<
+      StoredUser,
+      "did" | "organizationName" | "password" | "trustLevel" | "trustNote"
+    >
+  >
 ): Promise<StoredUser | null> {
   if (!supabase) {
     const users = loadFromFile();
@@ -174,6 +209,8 @@ export async function updateUser(
   if (updates.did !== undefined) patch.did = updates.did ?? null;
   if (updates.organizationName !== undefined) patch.organization_name = updates.organizationName ?? null;
   if (updates.password !== undefined) patch.password = updates.password;
+  if (updates.trustLevel !== undefined) patch.trust_level = updates.trustLevel;
+  if (updates.trustNote !== undefined) patch.trust_note = updates.trustNote ?? null;
 
   const { data, error } = await supabase
     .from("users")

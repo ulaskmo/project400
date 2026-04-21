@@ -7,6 +7,7 @@ import {
   handleGetAllUsers,
   handleForgotPassword,
   handleResetPassword,
+  handleSetTrustLevel,
 } from "../controllers/authController";
 import { authenticate, adminOnly } from "../middleware/auth";
 
@@ -24,5 +25,13 @@ router.get("/users", authenticate, adminOnly, handleGetAllUsers);
 
 // Admin-only: create issuer/verifier/admin accounts
 router.post("/users", authenticate, adminOnly, handleAdminCreateUser);
+
+// Admin-only: set trust level (unverified / verified / accredited)
+router.post(
+  "/users/:id/trust-level",
+  authenticate,
+  adminOnly,
+  handleSetTrustLevel
+);
 
 export default router;

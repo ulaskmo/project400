@@ -1,11 +1,20 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { apiPost } from "../api/client";
+import type { TrustLevel } from "../api/client";
+import { TrustBadge, describeTrustLevel } from "./TrustBadge";
+import { QRScanner, extractCredentialId } from "./QRScanner";
 
 type VerificationResult = {
   credentialId: string;
   status: string;
   details?: string;
-  issuer?: { did: string; verified: boolean };
+  issuer?: {
+    did: string;
+    verified: boolean;
+    name?: string;
+    role?: string;
+    trustLevel?: TrustLevel;
+  };
   holder?: { did: string };
   timestamp?: string;
   metadata?: {
@@ -53,21 +62,25 @@ const ClockIcon = () => (
   </svg>
 );
 
+type VerifyMode = "manual" | "scan";
+
 export function VerifierPanel() {
   const [credentialId, setCredentialId] = useState("");
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [verificationHistory, setVerificationHistory] = useState<VerificationResult[]>([]);
+  const [mode, setMode] = useState<VerifyMode>("manual");
+  const lastScanRef = useRef<string | null>(null);
 
-  const verify = async () => {
-    if (!credentialId.trim()) return;
-
+  const verifyId = async (rawId: string) => {
+    const id = rawId.trim();
+    if (!id) return;
     setError(null);
     setResult(null);
     setLoading(true);
     try {
-      const res = await apiPost<VerificationResult>("/verify", { credentialId: credentialId.trim() });
+      const res = await apiPost<VerificationResult>("/verify", { credentialId: id });
       setResult(res);
       setVerificationHistory((prev) => [res, ...prev.slice(0, 9)]);
     } catch (e) {
@@ -79,7 +92,16 @@ export function VerifierPanel() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    verify();
+    verifyId(credentialId);
+  };
+
+  const handleScanned = (text: string) => {
+    const id = extractCredentialId(text);
+    if (!id || id === lastScanRef.current) return;
+    lastScanRef.current = id;
+    setCredentialId(id);
+    setMode("manual");
+    verifyId(id);
   };
 
   const isValid = result?.status?.toLowerCase() === "valid";
@@ -94,6 +116,27 @@ export function VerifierPanel() {
         </p>
       </div>
 
+      {/* Mode tabs */}
+      <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)", justifyContent: "center" }}>
+        <button
+          className={`btn ${mode === "manual" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => setMode("manual")}
+          style={{ padding: "var(--space-2) var(--space-4)", fontSize: "0.875rem" }}
+        >
+          Manual Entry
+        </button>
+        <button
+          className={`btn ${mode === "scan" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => {
+            lastScanRef.current = null;
+            setMode("scan");
+          }}
+          style={{ padding: "var(--space-2) var(--space-4)", fontSize: "0.875rem" }}
+        >
+          Scan QR
+        </button>
+      </div>
+
       {/* Verification Input */}
       <div className="card" style={{ marginBottom: "var(--space-6)" }}>
         <div className="card-header">
@@ -101,39 +144,53 @@ export function VerifierPanel() {
             <SearchIcon />
           </div>
           <div>
-            <h3 className="card-title">Credential Verification</h3>
-            <p className="card-subtitle">Enter the credential ID from the holder</p>
+            <h3 className="card-title">
+              {mode === "manual" ? "Credential Verification" : "Scan Credential QR"}
+            </h3>
+            <p className="card-subtitle">
+              {mode === "manual"
+                ? "Enter the credential ID from the holder"
+                : "Point the camera at a credential QR code"}
+            </p>
           </div>
         </div>
 
         <div className="card-body">
-          <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label className="input-label">Credential ID *</label>
-              <input
-                type="text"
-                className="input input-mono"
-                value={credentialId}
-                onChange={(e) => setCredentialId(e.target.value)}
-                placeholder="cred-..."
-              />
-              <p style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: "var(--space-1)" }}>
-                Ask the holder for their credential ID to verify it
-              </p>
-            </div>
+          {mode === "manual" ? (
+            <form onSubmit={handleSubmit}>
+              <div className="input-group">
+                <label className="input-label">Credential ID *</label>
+                <input
+                  type="text"
+                  className="input input-mono"
+                  value={credentialId}
+                  onChange={(e) => setCredentialId(e.target.value)}
+                  placeholder="cred-..."
+                />
+                <p style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: "var(--space-1)" }}>
+                  Ask the holder for their credential ID to verify it, or switch to Scan QR
+                </p>
+              </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg w-full"
-              disabled={loading || !credentialId.trim()}
-            >
-              {loading ? (
-                <span className="loading"><span className="spinner" />Verifying...</span>
-              ) : (
-                <><SearchIcon /> Verify Credential</>
-              )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="btn btn-primary btn-lg w-full"
+                disabled={loading || !credentialId.trim()}
+              >
+                {loading ? (
+                  <span className="loading"><span className="spinner" />Verifying...</span>
+                ) : (
+                  <><SearchIcon /> Verify Credential</>
+                )}
+              </button>
+            </form>
+          ) : (
+            <QRScanner
+              active={mode === "scan"}
+              onDetected={handleScanned}
+              onError={(msg) => setError(msg)}
+            />
+          )}
 
           {error && (
             <div className="error-message" style={{ marginTop: "var(--space-4)" }}>
@@ -200,15 +257,33 @@ export function VerifierPanel() {
               </div>
             )}
             {result.issuer && (
-              <div className="data-row">
-                <span className="data-label">Issuer DID</span>
-                <span className="data-value" style={{ fontSize: "0.7rem" }}>
-                  {result.issuer.did}
-                  {result.issuer.verified && (
-                    <span style={{ color: "var(--success-600)", marginLeft: 4 }}> (verified)</span>
-                  )}
-                </span>
-              </div>
+              <>
+                <div className="data-row">
+                  <span className="data-label">Issuer Trust</span>
+                  <span
+                    className="data-value"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                    title={describeTrustLevel(result.issuer.trustLevel)}
+                  >
+                    <TrustBadge level={result.issuer.trustLevel} />
+                  </span>
+                </div>
+                {result.issuer.name && (
+                  <div className="data-row">
+                    <span className="data-label">Issuer</span>
+                    <span className="data-value">{result.issuer.name}</span>
+                  </div>
+                )}
+                <div className="data-row">
+                  <span className="data-label">Issuer DID</span>
+                  <span className="data-value" style={{ fontSize: "0.7rem" }}>
+                    {result.issuer.did}
+                    {result.issuer.verified && (
+                      <span style={{ color: "var(--success-600)", marginLeft: 4 }}> (registered)</span>
+                    )}
+                  </span>
+                </div>
+              </>
             )}
             {result.holder && (
               <div className="data-row">

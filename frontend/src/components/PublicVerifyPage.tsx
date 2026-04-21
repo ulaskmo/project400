@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import type { TrustLevel } from "../api/client";
+import { TrustBadge, describeTrustLevel } from "./TrustBadge";
 
 type VerificationResult = {
   verified: boolean;
@@ -6,6 +8,14 @@ type VerificationResult = {
   status: string;
   message?: string;
   issuer?: string;
+  issuerName?: string;
+  issuerRole?: string;
+  issuerTrustLevel?: TrustLevel;
+  holder?: string;
+  credentialType?: string;
+  subjectName?: string;
+  description?: string;
+  expiresAt?: string;
   verifiedAt?: string;
 };
 
@@ -202,8 +212,49 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
 
             <div className="divider" />
 
+            {/* Issuer Trust Banner */}
+            {result.issuer && (
+              <div
+                style={{
+                  margin: "0 auto var(--space-4)",
+                  maxWidth: 420,
+                  padding: "var(--space-3) var(--space-4)",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--surface-inset)",
+                  border: "1px solid var(--surface-border)",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>Issuer Trust</span>
+                  <TrustBadge level={result.issuerTrustLevel} size="md" />
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>
+                  {describeTrustLevel(result.issuerTrustLevel)}
+                </div>
+              </div>
+            )}
+
             {/* Details */}
             <div style={{ padding: "var(--space-4) 0" }}>
+              {result.credentialType && (
+                <div className="data-row">
+                  <span className="data-label">Type</span>
+                  <span className="data-value">{result.credentialType}</span>
+                </div>
+              )}
+              {result.subjectName && (
+                <div className="data-row">
+                  <span className="data-label">Subject</span>
+                  <span className="data-value">{result.subjectName}</span>
+                </div>
+              )}
+              {result.description && (
+                <div className="data-row">
+                  <span className="data-label">Description</span>
+                  <span className="data-value">{result.description}</span>
+                </div>
+              )}
               <div className="data-row">
                 <span className="data-label">Credential ID</span>
                 <span className="data-value">{result.credentialId}</span>
@@ -215,10 +266,22 @@ export function PublicVerifyPage({ credentialId: initialId }: PublicVerifyPagePr
                   {result.status}
                 </span>
               </div>
-              {result.issuer && (
+              {result.issuerName && (
                 <div className="data-row">
                   <span className="data-label">Issuer</span>
-                  <span className="data-value" style={{ fontSize: "0.75rem" }}>{result.issuer}</span>
+                  <span className="data-value">{result.issuerName}</span>
+                </div>
+              )}
+              {result.issuer && (
+                <div className="data-row">
+                  <span className="data-label">Issuer DID</span>
+                  <span className="data-value" style={{ fontSize: "0.7rem" }}>{result.issuer}</span>
+                </div>
+              )}
+              {result.expiresAt && (
+                <div className="data-row">
+                  <span className="data-label">Expires</span>
+                  <span className="data-value">{result.expiresAt}</span>
                 </div>
               )}
               <div className="data-row">

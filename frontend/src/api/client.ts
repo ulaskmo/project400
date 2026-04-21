@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000
 
 // Types - must be defined first
 export type UserRole = "holder" | "issuer" | "verifier" | "admin";
+export type TrustLevel = "unverified" | "verified" | "accredited";
 
 export interface User {
   id: string;
@@ -9,6 +10,7 @@ export interface User {
   role: UserRole;
   did?: string;
   organizationName?: string;
+  trustLevel?: TrustLevel;
 }
 
 export interface AuthResponse {

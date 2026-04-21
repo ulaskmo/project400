@@ -7,7 +7,42 @@ import {
   issueCredential,
   revokeCredential
 } from "../services/credentialService";
-import { getUserById } from "../services/authService";
+import { getUserById, getUserByDid } from "../services/authService";
+
+/**
+ * Attach issuer trust info (trustLevel, organizationName) to a list of
+ * credentials. Uses a single lookup per unique issuer DID.
+ */
+async function enrichWithIssuerTrust<T extends { issuerDid: string }>(
+  credentials: T[]
+): Promise<
+  (T & {
+    issuerTrustLevel?: string;
+    issuerName?: string;
+    issuerRole?: string;
+  })[]
+> {
+  const uniqueDids = Array.from(new Set(credentials.map((c) => c.issuerDid)));
+  const issuers = await Promise.all(uniqueDids.map((did) => getUserByDid(did)));
+  const map = new Map<string, { trustLevel?: string; name?: string; role?: string }>();
+  uniqueDids.forEach((did, i) => {
+    const issuer = issuers[i];
+    map.set(did, {
+      trustLevel: issuer?.trustLevel ?? "unverified",
+      name: issuer?.organizationName || issuer?.email,
+      role: issuer?.role,
+    });
+  });
+  return credentials.map((c) => {
+    const info = map.get(c.issuerDid);
+    return {
+      ...c,
+      issuerTrustLevel: info?.trustLevel ?? "unverified",
+      issuerName: info?.name,
+      issuerRole: info?.role,
+    };
+  });
+}
 
 export const handleIssueCredential = async (
   req: Request,
@@ -59,7 +94,8 @@ export const handleGetCredential = async (
       res.status(404);
       throw new Error("Credential not found");
     }
-    res.json(credential);
+    const [enriched] = await enrichWithIssuerTrust([credential]);
+    res.json(enriched);
   } catch (error) {
     next(error);
   }
@@ -83,7 +119,8 @@ export const handleGetMyCredentials = async (
     }
 
     const credentials = await getCredentialsByHolder(user.did);
-    res.json(credentials);
+    const enriched = await enrichWithIssuerTrust(credentials);
+    res.json(enriched);
   } catch (error) {
     next(error);
   }
@@ -104,7 +141,8 @@ export const handleGetIssuedCredentials = async (
     const issuerDid = user?.did || `did:chainshield:issuer-${req.user.id}`;
 
     const credentials = await getCredentialsByIssuer(issuerDid);
-    res.json(credentials);
+    const enriched = await enrichWithIssuerTrust(credentials);
+    res.json(enriched);
   } catch (error) {
     next(error);
   }

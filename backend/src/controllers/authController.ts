@@ -6,6 +6,7 @@ import {
   getUserById,
   requestPasswordReset,
   resetPassword,
+  setTrustLevel,
   UserRole,
 } from "../services/authService";
 
@@ -195,9 +196,36 @@ export const handleGetAllUsers = async (
       did: u.did,
       organizationName: u.organizationName,
       createdAt: u.createdAt,
+      trustLevel: u.trustLevel ?? "unverified",
+      trustNote: u.trustNote,
     }));
     res.json(users);
   } catch (error) {
     next(error);
+  }
+};
+
+export const handleSetTrustLevel = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const { level, note } = req.body;
+    const updated = await setTrustLevel(id, level, note);
+    if (!updated) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+    res.json({
+      id: updated.id,
+      email: updated.email,
+      role: updated.role,
+      trustLevel: updated.trustLevel,
+      trustNote: updated.trustNote,
+    });
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message });
   }
 };
