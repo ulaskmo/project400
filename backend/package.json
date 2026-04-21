@@ -6,7 +6,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "node -r ts-node/register --test src/__tests__/api.test.ts"
+    "test": "ENABLE_DEFAULT_ADMIN=true DEFAULT_ADMIN_EMAIL=admin@chainshield.io DEFAULT_ADMIN_PASSWORD=admin123 node -r ts-node/register --test src/__tests__/api.test.ts"
   },
   "keywords": [],
   "author": "",

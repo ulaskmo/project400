@@ -6,6 +6,7 @@ import verificationRoutes from "./verification.routes";
 import statsRoutes from "./stats.routes";
 import socialRoutes from "./social.routes";
 import pexRoutes from "./pex.routes";
+import chainRoutes from "./chain.routes";
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use("/verify", verificationRoutes);
 router.use("/stats", statsRoutes);
 router.use("/social", socialRoutes);
 router.use("/pex", pexRoutes);
+router.use("/chain", chainRoutes);
 
 export default router;

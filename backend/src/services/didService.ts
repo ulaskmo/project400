@@ -1,9 +1,8 @@
 import { randomUUID } from "crypto";
-import { env } from "../config/env";
+import { isBlockchainMode } from "../config/env";
 import { mockDidRegistry } from "./mockStorage";
 
-// Check if we're in demo mode (no blockchain config)
-const isDemoMode = !env.web3ProviderUrl || !env.didRegistryAddress || !env.issuerPrivateKey;
+const isDemoMode = !isBlockchainMode();
 
 if (isDemoMode) {
   console.log("[DID Service] Running in DEMO MODE - using mock storage");

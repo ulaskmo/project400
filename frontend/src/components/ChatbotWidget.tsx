@@ -66,7 +66,7 @@ const FAQ: FaqEntry[] = [
     keywords: ["friend", "add", "request", "connect"],
     question: "How do I add a friend?",
     answer:
-      "Switch to the Friends sub-tab on your Wallet page. Click \"Add Friend\", enter your friend's email, and send a request. They'll see it under Requests and can accept or decline. Once accepted you can message them and share credentials.",
+      "On the Identity Holder page, switch to the Friends sub-tab (next to Wallet, Flow and Inbox). Click \"Add Friend\", enter your friend's email, and send a request. They'll see it under Requests and can accept or decline. Once accepted you can message them and share credentials.",
   },
   {
     keywords: ["message", "chat", "dm", "talk", "send"],
@@ -84,7 +84,7 @@ const FAQ: FaqEntry[] = [
     keywords: ["blockchain", "polygon", "chain", "onchain", "on-chain", "where", "stored"],
     question: "Where is my data stored?",
     answer:
-      "Credentials are anchored on the Polygon blockchain and the actual files are stored on IPFS — both decentralized so nobody can tamper with them. Your account details (email, password hash, friends, messages) live in our managed Supabase database. Your private key stays only with you.",
+      "Credential metadata (issuer, holder, content hash, signature, status) is anchored on the Polygon blockchain so nobody can tamper with it. The signed credential JSON itself is kept in our managed database today (IPFS hand-off is planned). Your account details — email, password hash, friends, messages — also live in that database. Your Ed25519 private key never leaves your server account and is encrypted at rest.",
   },
   {
     keywords: ["forgot", "password", "reset", "email", "link"],

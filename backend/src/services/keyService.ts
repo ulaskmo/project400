@@ -10,6 +10,19 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as ed from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha512";
 import { env } from "../config/env";
+import {
+  decryptPrivateKey,
+  encryptPrivateKey,
+  isEncrypted,
+  isKeyEncryptionEnabled,
+} from "./keyEncryption";
+
+if (!isKeyEncryptionEnabled()) {
+  console.warn(
+    "[KeyService] KEY_ENCRYPTION_SECRET is not set — private keys are stored in plaintext. " +
+      "Set KEY_ENCRYPTION_SECRET in your environment to encrypt keys at rest."
+  );
+}
 
 // Wire sha512 into noble/ed25519 (required for v2+)
 ed.etc.sha512Sync = (...m: Uint8Array[]) => sha512(ed.etc.concatBytes(...m));
@@ -94,9 +107,31 @@ function rowToKeypair(row: StoredRow): UserKeypair {
   return {
     userId: row.user_id,
     publicKeyHex: row.public_key_hex,
-    privateKeyHex: row.private_key_hex,
+    privateKeyHex: decryptPrivateKey(row.private_key_hex),
     algorithm: (row.algorithm as "Ed25519") ?? "Ed25519",
     createdAt: row.created_at,
+  };
+}
+
+/**
+ * Shape a keypair for persistence: the public key is stored as-is and the
+ * private key is encrypted if KEY_ENCRYPTION_SECRET is configured.
+ */
+function sealForStorage(kp: UserKeypair): UserKeypair {
+  return {
+    ...kp,
+    privateKeyHex: encryptPrivateKey(kp.privateKeyHex),
+  };
+}
+
+/**
+ * Restore a keypair that was loaded from disk: if the private key is
+ * marked encrypted, decrypt it before handing it back to callers.
+ */
+function unsealFromStorage(kp: UserKeypair): UserKeypair {
+  return {
+    ...kp,
+    privateKeyHex: decryptPrivateKey(kp.privateKeyHex),
   };
 }
 
@@ -124,7 +159,15 @@ export function generateKeypair(): { publicKeyHex: string; privateKeyHex: string
 async function loadKey(userId: string): Promise<UserKeypair | null> {
   const sb = keySupabase();
   if (!sb) {
-    return loadFile().find((k) => k.userId === userId) ?? null;
+    const raw = loadFile().find((k) => k.userId === userId);
+    if (!raw) return null;
+    const plain = unsealFromStorage(raw);
+    // Migrate legacy plaintext on-disk keys to encrypted form lazily on
+    // first touch, as long as a master key is configured.
+    if (isKeyEncryptionEnabled() && !isEncrypted(raw.privateKeyHex)) {
+      await saveKey(plain, { silent: true });
+    }
+    return plain;
   }
   const { data, error } = await sb
     .from("user_keys")
@@ -134,38 +177,50 @@ async function loadKey(userId: string): Promise<UserKeypair | null> {
   if (error) {
     if (supabaseTableMissing(error)) {
       disableKeysSupabase(error.message);
-      return loadFile().find((k) => k.userId === userId) ?? null;
+      const raw = loadFile().find((k) => k.userId === userId);
+      return raw ? unsealFromStorage(raw) : null;
     }
     console.error("[KeyService] load failed:", error.message);
     return null;
   }
-  return data ? rowToKeypair(data as StoredRow) : null;
+  if (!data) return null;
+  const row = data as StoredRow;
+  const plain = rowToKeypair(row);
+  if (isKeyEncryptionEnabled() && !isEncrypted(row.private_key_hex)) {
+    // Re-upsert as encrypted so legacy rows get upgraded.
+    await saveKey(plain, { silent: true });
+  }
+  return plain;
 }
 
-async function saveKey(kp: UserKeypair): Promise<void> {
+async function saveKey(
+  kp: UserKeypair,
+  opts: { silent?: boolean } = {}
+): Promise<void> {
+  const sealed = sealForStorage(kp);
   const sb = keySupabase();
   if (!sb) {
-    const keys = loadFile().filter((k) => k.userId !== kp.userId);
-    keys.push(kp);
+    const keys = loadFile().filter((k) => k.userId !== sealed.userId);
+    keys.push(sealed);
     saveFile(keys);
     return;
   }
   const { error } = await sb.from("user_keys").upsert({
-    user_id: kp.userId,
-    public_key_hex: kp.publicKeyHex,
-    private_key_hex: kp.privateKeyHex,
-    algorithm: kp.algorithm,
-    created_at: kp.createdAt,
+    user_id: sealed.userId,
+    public_key_hex: sealed.publicKeyHex,
+    private_key_hex: sealed.privateKeyHex,
+    algorithm: sealed.algorithm,
+    created_at: sealed.createdAt,
   });
   if (error) {
     if (supabaseTableMissing(error)) {
       disableKeysSupabase(error.message);
-      const keys = loadFile().filter((k) => k.userId !== kp.userId);
-      keys.push(kp);
+      const keys = loadFile().filter((k) => k.userId !== sealed.userId);
+      keys.push(sealed);
       saveFile(keys);
       return;
     }
-    console.error("[KeyService] save failed:", error.message);
+    if (!opts.silent) console.error("[KeyService] save failed:", error.message);
     throw new Error("Failed to store keypair");
   }
 }

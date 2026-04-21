@@ -33,7 +33,14 @@ interface MatchResult {
   allRequiredTypesCovered: boolean;
 }
 
-export function HolderPresentationInbox() {
+interface HolderPresentationInboxProps {
+  // Deep-link from /#/present/:id — auto-open this specific request after load.
+  autoOpenRequestId?: string;
+}
+
+export function HolderPresentationInbox({
+  autoOpenRequestId,
+}: HolderPresentationInboxProps = {}) {
   const [requests, setRequests] = useState<PresentationRequest[]>([]);
   const [history, setHistory] = useState<
     Array<PresentationRequest & { status: "fulfilled" }>
@@ -67,6 +74,17 @@ export function HolderPresentationInbox() {
   useEffect(() => {
     load();
   }, []);
+
+  // If we arrived via a /#/present/:id deep link, open the matching
+  // request as soon as the inbox load resolves and we haven't already
+  // opened something.
+  useEffect(() => {
+    if (!autoOpenRequestId || selected) return;
+    const match = requests.find((r) => r.id === autoOpenRequestId);
+    if (match) {
+      void openRequest(match);
+    }
+  }, [autoOpenRequestId, requests, selected]);
 
   const openRequest = async (r: PresentationRequest) => {
     setSelected(r);

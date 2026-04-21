@@ -18,12 +18,6 @@ const LockIcon = () => (
   </svg>
 );
 
-const UserIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-  </svg>
-);
-
 const AlertCircleIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/>
@@ -61,7 +55,6 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
 export function LoginPage() {
   const { login, register } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -201,25 +194,6 @@ export function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            {/* Full Name — register only */}
-            {isRegister && (
-              <div className="input-group">
-                <label className="input-label">Full Name</label>
-                <div style={{ position: "relative" }}>
-                  <span style={{
-                    position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
-                    color: "var(--gray-600)", width: 16, height: 16
-                  }}>
-                    <UserIcon />
-                  </span>
-                  <input type="text" className="input" value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="John Doe" required
-                    style={{ paddingLeft: 34 }} />
-                </div>
-              </div>
-            )}
-
             {/* Role — register only */}
             {isRegister && (
               <div className="input-group">
@@ -464,30 +438,47 @@ export function LoginPage() {
           }}
         >
           <div style={{ textAlign: "center", maxWidth: 520 }}>
+            <p
+              style={{
+                color: "var(--gray-500)",
+                fontSize: "0.6875rem",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                margin: 0,
+                marginBottom: "var(--space-3)",
+              }}
+            >
+              The ChainShield stack
+            </p>
             <h2
               style={{
-                fontSize: "1.6rem",
+                fontSize: "1.75rem",
                 fontWeight: 700,
-                color: "var(--gray-50, #f8fafc)",
                 margin: 0,
-                letterSpacing: "-0.01em",
-                textShadow: "0 2px 24px rgba(59,130,246,0.25)",
+                letterSpacing: "-0.02em",
+                color: "var(--gray-900)",
               }}
             >
               Built on open standards
             </h2>
             <p
               style={{
-                margin: "8px auto 0",
-                fontSize: "0.85rem",
-                color: "rgba(226,232,240,0.75)",
-                maxWidth: 420,
-                lineHeight: 1.55,
+                margin: "var(--space-3) auto 0",
+                fontSize: "0.875rem",
+                color: "var(--gray-600)",
+                maxWidth: 440,
+                lineHeight: 1.6,
               }}
             >
-              ChainShield ties together W3C Verifiable Credentials, DIDs,
-              Ed25519 integrity proofs, SSI principles, a holder-owned
-              wallet, and blockchain anchoring - orbiting a single identity.
+              ChainShield ties together{" "}
+              <strong style={{ color: "var(--gray-900)", fontWeight: 600 }}>W3C Verifiable Credentials</strong>,{" "}
+              <strong style={{ color: "var(--gray-900)", fontWeight: 600 }}>DIDs</strong>,{" "}
+              <strong style={{ color: "var(--gray-900)", fontWeight: 600 }}>Ed25519 integrity proofs</strong>,{" "}
+              <strong style={{ color: "var(--gray-900)", fontWeight: 600 }}>SSI principles</strong>, a{" "}
+              <strong style={{ color: "var(--gray-900)", fontWeight: 600 }}>holder-owned wallet</strong>, and{" "}
+              <strong style={{ color: "var(--gray-900)", fontWeight: 600 }}>blockchain anchoring</strong>{" "}
+              — all orbiting a single identity.
             </p>
           </div>
           <TechOrbit />

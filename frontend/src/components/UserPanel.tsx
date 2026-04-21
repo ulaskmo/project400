@@ -45,8 +45,21 @@ const FlowIcon = () => (
 
 type SubTab = "wallet" | "flow" | "inbox" | "friends";
 
-export function UserPanel() {
-  const [subTab, setSubTab] = useState<SubTab>("wallet");
+interface UserPanelProps {
+  // When present, auto-switch to the inbox and open this specific request.
+  // Populated by the /#/present/:id deep link from VerifierRequestsPanel.
+  presentRequestId?: string;
+}
+
+export function UserPanel({ presentRequestId }: UserPanelProps = {}) {
+  const [subTab, setSubTab] = useState<SubTab>(
+    presentRequestId ? "inbox" : "wallet"
+  );
+
+  useEffect(() => {
+    if (presentRequestId) setSubTab("inbox");
+  }, [presentRequestId]);
+
   const [unreadCount, setUnreadCount] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const prevUnreadRef = useRef(0);
@@ -196,7 +209,9 @@ export function UserPanel() {
 
       {subTab === "wallet" && <WalletPanel />}
       {subTab === "flow" && <FlowPanel />}
-      {subTab === "inbox" && <HolderPresentationInbox />}
+      {subTab === "inbox" && (
+        <HolderPresentationInbox autoOpenRequestId={presentRequestId} />
+      )}
       {subTab === "friends" && <FriendsPanel />}
 
       {toast && (
@@ -206,7 +221,7 @@ export function UserPanel() {
             position: "fixed",
             bottom: 24,
             right: 24,
-            zIndex: 1000,
+            zIndex: 10000,
             padding: "12px 16px",
             background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
             color: "white",

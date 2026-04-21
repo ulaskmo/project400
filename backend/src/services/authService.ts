@@ -62,25 +62,38 @@ function toUser(stored: StoredUser): User {
   };
 }
 
-// Initialize default admin on startup
+// Seed a default admin only when explicitly enabled via env.
+// Production deployments must create the admin manually; we will not ship
+// a well-known admin password in the default path.
 const initAdmin = async () => {
-  const hashedPassword = bcrypt.hashSync("admin123", BCRYPT_ROUNDS);
+  if (!env.enableDefaultAdmin) return;
+  const defaultEmail =
+    process.env.DEFAULT_ADMIN_EMAIL || "admin@chainshield.local";
+  const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+  if (!defaultPassword || defaultPassword.length < 8) {
+    console.error(
+      "[Auth] ENABLE_DEFAULT_ADMIN=true but DEFAULT_ADMIN_PASSWORD is missing or < 8 chars. Skipping admin bootstrap."
+    );
+    return;
+  }
+  const hashedPassword = bcrypt.hashSync(defaultPassword, BCRYPT_ROUNDS);
   const adminUser: StoredUser = {
     id: "00000000-0000-0000-0000-000000000001",
-    email: "admin@chainshield.io",
+    email: defaultEmail,
     password: hashedPassword,
     role: "admin",
     createdAt: new Date().toISOString(),
   };
   try {
     await ensureDefaultAdmin(adminUser);
+    console.log(`[Auth] Default admin ensured: ${defaultEmail}`);
   } catch (err) {
     console.error("[Auth Service] Failed to ensure default admin:", err);
   }
 };
 initAdmin();
 
-const JWT_SECRET = env.jwtSecret || "chainshield_dev_secret";
+const JWT_SECRET = env.jwtSecret;
 const JWT_EXPIRES_IN = "24h";
 
 export const register = async (

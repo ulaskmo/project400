@@ -18,7 +18,7 @@ interface Planet {
   icon: JSX.Element;
 }
 
-// ---------- Icons (simple inline SVGs) ----------
+// ---------- Icons ----------
 
 const W3CIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -83,31 +83,23 @@ const BlockchainIcon = () => (
   </svg>
 );
 
-// ---------- Planet configuration ----------
+// ---------- Configuration ----------
 
 const PLANETS: Planet[] = [
-  { label: "W3C", ring: 1, startDeg: 225, tint: "#ef4444", icon: <W3CIcon /> },
-  { label: "DID", ring: 1, startDeg: 75, tint: "#3b82f6", icon: <DidIcon /> },
+  { label: "W3C", ring: 1, startDeg: 210, tint: "#ef4444", icon: <W3CIcon /> },
+  { label: "DID", ring: 1, startDeg: 60, tint: "#3b82f6", icon: <DidIcon /> },
   { label: "Integrity", ring: 2, startDeg: 0, tint: "#14b8a6", icon: <IntegrityIcon /> },
   { label: "SSI", ring: 2, startDeg: 180, tint: "#f97316", reverse: true, icon: <SsiIcon /> },
-  { label: "Wallet", ring: 3, startDeg: 60, tint: "#a855f7", icon: <WalletIcon /> },
-  { label: "Blockchain", ring: 3, startDeg: 240, tint: "#2563eb", reverse: true, icon: <BlockchainIcon /> },
+  { label: "Wallet", ring: 3, startDeg: 45, tint: "#a855f7", icon: <WalletIcon /> },
+  { label: "Blockchain", ring: 3, startDeg: 225, tint: "#2563eb", reverse: true, icon: <BlockchainIcon /> },
 ];
 
-// Ring radii in %, relative to the half-size of the viewport.
-const RING_RADIUS = {
-  1: 28,
-  2: 38,
-  3: 46,
-};
+// Ring radii in % of the container's half-size.
+// i.e. 30 means the planet orbits at 30% out from center.
+const RING_RADIUS = { 1: 22, 2: 32, 3: 42 };
 
-const RING_DURATION = {
-  1: 24, // fastest, inner ring
-  2: 38,
-  3: 56, // slowest, outer ring
-};
+const RING_DURATION = { 1: 26, 2: 40, 3: 58 };
 
-// Decorative floating dots (like the reference image).
 const DOTS: { size: number; color: string; top: string; left: string; delay: number }[] = [
   { size: 10, color: "#f59e0b", top: "18%", left: "55%", delay: 0 },
   { size: 8, color: "#ef4444", top: "22%", left: "45%", delay: 1.2 },
@@ -126,7 +118,7 @@ export function TechOrbit() {
       style={{
         position: "relative",
         width: "100%",
-        maxWidth: 560,
+        maxWidth: 520,
         aspectRatio: "1 / 1",
         margin: "0 auto",
         color: "#e5e7eb",
@@ -134,7 +126,7 @@ export function TechOrbit() {
     >
       <style>{techOrbitStyles}</style>
 
-      {/* Dashed orbit rings - SVG keeps the lines crisp at any size */}
+      {/* Dashed orbit rings - SVG stays crisp at any size */}
       <svg
         viewBox="-50 -50 100 100"
         style={{
@@ -145,21 +137,12 @@ export function TechOrbit() {
           pointerEvents: "none",
         }}
       >
-        <defs>
-          <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(59,130,246,0.45)" />
-            <stop offset="60%" stopColor="rgba(59,130,246,0.12)" />
-            <stop offset="100%" stopColor="rgba(59,130,246,0)" />
-          </radialGradient>
-        </defs>
-
-        <circle cx="0" cy="0" r="18" fill="url(#sunGlow)" />
-        <circle cx="0" cy="0" r={RING_RADIUS[1]} fill="none" stroke="rgba(148,163,184,0.35)" strokeWidth="0.3" strokeDasharray="1 1.2" />
-        <circle cx="0" cy="0" r={RING_RADIUS[2]} fill="none" stroke="rgba(148,163,184,0.3)" strokeWidth="0.3" strokeDasharray="1 1.2" />
-        <circle cx="0" cy="0" r={RING_RADIUS[3]} fill="none" stroke="rgba(148,163,184,0.25)" strokeWidth="0.3" strokeDasharray="1 1.2" />
+        <circle cx="0" cy="0" r={RING_RADIUS[1]} fill="none" stroke="rgba(148,163,184,0.45)" strokeWidth="0.3" strokeDasharray="1 1.2" />
+        <circle cx="0" cy="0" r={RING_RADIUS[2]} fill="none" stroke="rgba(148,163,184,0.4)" strokeWidth="0.3" strokeDasharray="1 1.2" />
+        <circle cx="0" cy="0" r={RING_RADIUS[3]} fill="none" stroke="rgba(148,163,184,0.35)" strokeWidth="0.3" strokeDasharray="1 1.2" />
       </svg>
 
-      {/* Floating coloured dots */}
+      {/* Floating coloured dots (decorative) */}
       {DOTS.map((d, i) => (
         <span
           key={i}
@@ -175,67 +158,72 @@ export function TechOrbit() {
         />
       ))}
 
-      {/* Sun / center - ChainShield logo */}
+      {/* Sun / center - soft halo + ChainShield logo */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: "26%",
+          aspectRatio: "1 / 1",
+          transform: "translate(-50%, -50%)",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle at 50% 50%, rgba(251,191,36,0.55) 0%, rgba(249,115,22,0.25) 45%, rgba(249,115,22,0) 75%)",
+          filter: "blur(3px)",
+          animation: "techorbit-sun-pulse 4.5s ease-in-out infinite",
+          pointerEvents: "none",
+        }}
+      />
+      <SunMark />
       <div
         style={{
           position: "absolute",
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "22%",
+          width: "18%",
           aspectRatio: "1 / 1",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle at 30% 30%, rgba(99,102,241,0.9), rgba(30,58,138,0.9) 60%, rgba(15,23,42,1))",
+            "radial-gradient(circle at 35% 30%, #fff7ed 0%, #fde68a 35%, #fbbf24 65%, #f59e0b 100%)",
           boxShadow:
-            "0 0 40px rgba(99,102,241,0.55), 0 0 100px rgba(59,130,246,0.25), inset 0 0 22px rgba(255,255,255,0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          animation: "techorbit-sun-pulse 4.5s ease-in-out infinite",
+            "inset 0 3px 10px rgba(255,255,255,0.8), inset 0 -8px 18px rgba(180,83,9,0.45), 0 0 30px rgba(251,191,36,0.7), 0 0 70px rgba(249,115,22,0.5)",
         }}
-      >
-        <img
-          src="/chainshield.png"
-          alt="ChainShield"
-          style={{
-            width: "72%",
-            height: "72%",
-            objectFit: "contain",
-            filter: "drop-shadow(0 4px 18px rgba(99,102,241,0.8))",
-          }}
-        />
-      </div>
+      />
 
       {/* Planets */}
       {PLANETS.map((p) => {
         const ringPct = RING_RADIUS[p.ring];
         const duration = RING_DURATION[p.ring];
-        // Use a negative animation-delay to place each planet at its
-        // starting angle without ever overriding the animated transform.
+        // Negative animation-delay stages each planet at its start angle
+        // without fighting the animated transform.
         const delay = -(p.startDeg / 360) * duration;
+
+        // Outer wrapper spans the whole container and rotates around its
+        // own center; the planet sits at ringPct% to the right of center.
         const orbitStyle: CSSProperties = {
           position: "absolute",
-          top: "50%",
-          left: "50%",
-          width: 0,
-          height: 0,
+          inset: 0,
           animation: `techorbit-spin ${duration}s linear infinite`,
           animationDelay: `${delay}s`,
           animationDirection: p.reverse ? "reverse" : "normal",
+          pointerEvents: "none",
         };
+
+        // Planet is positioned at center + ringPct% horizontally.
+        // Counter-rotation keeps the icon upright.
         const planetStyle: CSSProperties = {
           position: "absolute",
-          top: 0,
-          left: `${ringPct}%`,
-          width: "14%",
+          top: "50%",
+          left: `${50 + ringPct}%`,
+          width: "13%",
           aspectRatio: "1 / 1",
-          // Counter-rotate the icon so it stays upright while the
-          // wrapper rotates around the sun. Same delay keeps them in phase.
           animation: `techorbit-spin-counter ${duration}s linear infinite`,
           animationDelay: `${delay}s`,
-          animationDirection: p.reverse ? "normal" : "reverse",
+          animationDirection: p.reverse ? "reverse" : "normal",
         };
+
         return (
           <div key={p.label} style={orbitStyle}>
             <div style={planetStyle}>
@@ -243,6 +231,55 @@ export function TechOrbit() {
                 {p.icon}
               </Planet>
             </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SunMark() {
+  // Alternating long/short rays around the sun disc.
+  const rays = Array.from({ length: 16 }, (_, i) => i);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "30%",
+        aspectRatio: "1 / 1",
+        pointerEvents: "none",
+        animation: "techorbit-sun-rays 22s linear infinite",
+      }}
+    >
+      {rays.map((i) => {
+        const long = i % 2 === 0;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              inset: 0,
+              transform: `rotate(${i * (360 / 16)}deg)`,
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "50%",
+                width: long ? "8%" : "5%",
+                height: long ? "24%" : "16%",
+                transform: "translate(-50%, -30%)",
+                borderRadius: "999px",
+                background: long
+                  ? "linear-gradient(to top, rgba(251,191,36,0) 0%, rgba(251,191,36,0.95) 55%, #fff7ed 100%)"
+                  : "linear-gradient(to top, rgba(249,115,22,0) 0%, rgba(249,115,22,0.85) 60%, #fbbf24 100%)",
+                filter: "blur(0.4px) drop-shadow(0 0 6px rgba(251,191,36,0.65))",
+              }}
+            />
           </div>
         );
       })}
@@ -277,12 +314,12 @@ function Planet({
           height: "100%",
           borderRadius: "50%",
           background: "#ffffff",
-          boxShadow: `0 6px 22px rgba(0,0,0,0.5), 0 0 0 2px ${tint}33, 0 0 28px ${tint}55`,
+          boxShadow: `0 6px 22px rgba(0,0,0,0.45), 0 0 0 2px ${tint}33, 0 0 28px ${tint}55`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           color: tint,
-          padding: "20%",
+          padding: "22%",
           boxSizing: "border-box",
         }}
       >
@@ -294,17 +331,17 @@ function Planet({
           top: "112%",
           left: "50%",
           transform: "translateX(-50%)",
-          fontSize: "0.65rem",
+          fontSize: "0.6rem",
           letterSpacing: "0.05em",
           textTransform: "uppercase",
           fontWeight: 700,
-          color: "rgba(226,232,240,0.85)",
-          background: "rgba(15,23,42,0.85)",
-          padding: "2px 8px",
+          color: "rgba(226,232,240,0.9)",
+          background: "rgba(15,23,42,0.8)",
+          padding: "2px 7px",
           borderRadius: 999,
           whiteSpace: "nowrap",
           border: `1px solid ${tint}55`,
-          boxShadow: "0 2px 10px rgba(0,0,0,0.45)",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.4)",
         }}
       >
         {label}
@@ -316,15 +353,19 @@ function Planet({
 const techOrbitStyles = `
 @keyframes techorbit-spin {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to   { transform: rotate(360deg); }
 }
 @keyframes techorbit-spin-counter {
   from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(-360deg); }
+  to   { transform: translate(-50%, -50%) rotate(-360deg); }
 }
 @keyframes techorbit-sun-pulse {
-  0%, 100% { box-shadow: 0 0 40px rgba(99,102,241,0.55), 0 0 100px rgba(59,130,246,0.25), inset 0 0 22px rgba(255,255,255,0.08); }
-  50%      { box-shadow: 0 0 70px rgba(99,102,241,0.9),  0 0 140px rgba(59,130,246,0.4),  inset 0 0 26px rgba(255,255,255,0.14); }
+  0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.05); }
+}
+@keyframes techorbit-sun-rays {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
 }
 .techorbit-dot {
   position: absolute;

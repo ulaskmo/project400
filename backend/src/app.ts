@@ -25,8 +25,14 @@ app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 
 app.get("/api/health", (_req, res) => {
-  const isDemo = !process.env.WEB3_PROVIDER_URL || !process.env.DID_REGISTRY_ADDRESS || !process.env.ISSUER_PRIVATE_KEY;
-  res.json({ status: "ok", mode: isDemo ? "demo" : "blockchain" });
+  // Use the single shared predicate so /api/health and the credential /
+  // DID services can never disagree on which mode the backend is in.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { isBlockchainMode } = require("./config/env");
+  res.json({
+    status: "ok",
+    mode: isBlockchainMode() ? "blockchain" : "demo",
+  });
 });
 
 app.use("/api", routes);

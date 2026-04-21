@@ -39,10 +39,15 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   const t = getTransporter();
   if (!t) {
-    console.log(
-      `[Email] (SMTP not configured) Would have sent reset link to ${to}: ${resetUrl}`
+    // Refuse to silently succeed: we must never log a valid reset token
+    // to stdout in a deployed environment, and we must not tell the user
+    // "check your email" when no email will arrive.
+    console.error(
+      "[Email] SMTP is not configured. Cannot send password reset email."
     );
-    return;
+    throw new Error(
+      "Password reset is unavailable: email service is not configured."
+    );
   }
 
   const subject = "Reset your ChainShield password";

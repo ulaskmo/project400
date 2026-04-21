@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { createHash } from "crypto";
 import {
   CredentialPayload,
   getCredential,
@@ -13,6 +14,18 @@ import {
   verifyVerifiableCredential,
   VerifiableCredential,
 } from "../services/vcService";
+
+/**
+ * Produce a deterministic SHA-256 content hash for the credential payload.
+ *
+ * This is what gets written to the `ipfsHash` slot of the on-chain record
+ * today. When IPFS is actually wired up later, the uploaded CID will be
+ * stored here instead — the contract schema doesn't need to change.
+ */
+function computeContentHash(payload: unknown): string {
+  const json = JSON.stringify(payload);
+  return `sha256:${createHash("sha256").update(json).digest("hex")}`;
+}
 
 /**
  * Attach issuer trust info (trustLevel, organizationName) to a list of
@@ -63,8 +76,7 @@ export const handleIssueCredential = async (
     const issuer = await getUserById(req.user.id);
     const issuerDid = issuer?.did || `did:chainshield:issuer-${req.user.id}`;
 
-    const { credentialId, holderDid, ipfsHash, metadata, subjectFields } =
-      req.body;
+    const { credentialId, holderDid, metadata, subjectFields } = req.body;
 
     if (!credentialId || !holderDid) {
       res.status(400).json({ message: "credentialId and holderDid are required" });
@@ -92,10 +104,12 @@ export const handleIssueCredential = async (
       expirationDate: metadata?.expiresAt,
     });
 
+    const contentHash = computeContentHash(vc);
+
     const payload: Omit<CredentialPayload, "status"> = {
       credentialId,
       holderDid,
-      ipfsHash,
+      ipfsHash: contentHash,
       issuerDid,
       metadata: {
         ...metadata,
@@ -202,10 +216,18 @@ export const handleRevokeCredential = async (
 
     const user = await getUserById(req.user.id);
     const userDid = user?.did;
+    const syntheticDid = `did:chainshield:${req.user.role}-${req.user.id}`;
 
     const isAdmin = req.user.role === "admin";
-    const isIssuer = !!userDid && credential.issuerDid === userDid;
-    const isHolder = !!userDid && credential.holderDid === userDid;
+    // Also accept synthetic DIDs (did:chainshield:{role}-{userId}), which
+    // is what older credentials were stamped with when the issuer did
+    // not yet have a real DID stored on their user record.
+    const isIssuer =
+      (!!userDid && credential.issuerDid === userDid) ||
+      credential.issuerDid === syntheticDid;
+    const isHolder =
+      (!!userDid && credential.holderDid === userDid) ||
+      credential.holderDid === syntheticDid;
 
     if (!isAdmin && !isIssuer && !isHolder) {
       res.status(403).json({
@@ -287,20 +309,7 @@ export const handleSelfIssueCredential = async (
       return;
     }
 
-    // Generate unique credential ID
     const credentialId = `self-cred-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-    // Simulate IPFS hash (in production, would actually upload to IPFS)
-    const credentialPayload = {
-      type: `self:${credentialType}`, // Prefix with "self:" to mark as self-attested
-      data: {
-        ...credentialData,
-        _selfAttested: true,
-        _attestedBy: user.email,
-        _attestedAt: new Date().toISOString(),
-      },
-    };
-    const ipfsHash = `ipfs://Qm${Buffer.from(JSON.stringify(credentialPayload)).toString("base64").slice(0, 44)}`;
 
     const subjectFields: Record<string, unknown> = { ...credentialData };
     const vc = await issueVerifiableCredential({
@@ -313,12 +322,13 @@ export const handleSelfIssueCredential = async (
       expirationDate: credentialData.expiresAt,
     });
 
-    // For self-issued credentials, the holder is also the issuer
+    const contentHash = computeContentHash(vc);
+
     const payload: Omit<CredentialPayload, "status"> = {
       credentialId,
       holderDid: user.did,
       issuerDid: user.did,
-      ipfsHash,
+      ipfsHash: contentHash,
       metadata: {
         type: `self:${credentialType}`,
         subjectName: credentialData.title || undefined,

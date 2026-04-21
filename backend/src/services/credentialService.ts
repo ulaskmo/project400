@@ -1,8 +1,8 @@
-import { env } from "../config/env";
+import { isBlockchainMode } from "../config/env";
 import { mockCredentialRegistry, CredentialMetadata } from "./mockStorage";
 import { loadCredentials, saveCredentials, StoredCredentialRecord } from "./credentialStorage";
 
-const isDemoMode = !env.web3ProviderUrl || !env.credentialRegistryAddress || !env.issuerPrivateKey;
+const isDemoMode = !isBlockchainMode();
 
 if (isDemoMode) {
   console.log("[Credential Service] Running in DEMO MODE - using mock storage");
@@ -22,7 +22,18 @@ function persistIndex() {
   saveCredentials(Array.from(credentialIndex.values()));
 }
 
-function addToIndex(payload: CredentialPayload, onChain: boolean) {
+interface ChainAnchor {
+  txHash: string;
+  blockNumber: number;
+  chainId: number;
+  anchoredAt: string;
+}
+
+function addToIndex(
+  payload: CredentialPayload,
+  onChain: boolean,
+  anchor?: ChainAnchor
+) {
   const record: StoredCredentialRecord = {
     credentialId: payload.credentialId,
     issuerDid: payload.issuerDid,
@@ -33,6 +44,10 @@ function addToIndex(payload: CredentialPayload, onChain: boolean) {
     issuedAt: new Date().toISOString(),
     metadata: payload.metadata,
     onChain,
+    txHash: anchor?.txHash,
+    blockNumber: anchor?.blockNumber,
+    chainId: anchor?.chainId,
+    anchoredAt: anchor?.anchoredAt,
     vc: payload.vc,
   };
   credentialIndex.set(payload.credentialId, record);
@@ -83,10 +98,12 @@ export const issueCredential = async (
     return result;
   }
 
-  // Blockchain mode — write to chain AND local index
-  let onChain = false;
+  // Blockchain mode — write to chain first. If the chain write fails we
+  // refuse to persist anything locally so the UI doesn't silently keep
+  // divergent state between the two sources of truth.
+  let anchor: ChainAnchor | undefined;
   try {
-    const { getCredentialRegistry } = await import("./web3Client");
+    const { getCredentialRegistry, provider } = await import("./web3Client");
     const registry = getCredentialRegistry();
     const tx = await registry.registerCredential(
       payload.credentialId,
@@ -95,12 +112,27 @@ export const issueCredential = async (
       payload.ipfsHash,
       signature
     );
-    await tx.wait();
-    onChain = true;
-    console.log(`[Credential Service] Credential ${payload.credentialId} registered on blockchain`);
+    const receipt = await tx.wait();
+    const network = await provider.getNetwork();
+    anchor = {
+      txHash: tx.hash,
+      blockNumber: Number(receipt?.blockNumber ?? 0),
+      chainId: Number(network.chainId),
+      anchoredAt: new Date().toISOString(),
+    };
+    console.log(
+      `[Credential Service] Credential ${payload.credentialId} anchored on chain`,
+      anchor
+    );
   } catch (err) {
-    console.error(`[Credential Service] Blockchain write failed for ${payload.credentialId}:`, err);
-    console.log(`[Credential Service] Credential saved to local index only`);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[Credential Service] Blockchain write failed for ${payload.credentialId}:`,
+      err
+    );
+    throw new Error(
+      `Could not anchor credential on chain: ${msg}. No credential was issued.`
+    );
   }
 
   const result: CredentialPayload = {
@@ -108,7 +140,7 @@ export const issueCredential = async (
     signature,
     status: "valid",
   };
-  addToIndex(result, onChain);
+  addToIndex(result, true, anchor);
   return result;
 };
 
@@ -179,21 +211,33 @@ export const revokeCredential = async (credentialId: string) => {
     };
   }
 
-  // Blockchain mode
+  // Blockchain mode — require successful on-chain revoke before mutating
+  // local state so we never show "revoked" locally for a credential that's
+  // still valid on-chain.
+  let revokeTxHash: string | undefined;
+  let revokeBlockNumber: number | undefined;
   try {
     const { getCredentialRegistry } = await import("./web3Client");
     const registry = getCredentialRegistry();
     const tx = await registry.revokeCredential(credentialId);
-    await tx.wait();
+    const receipt = await tx.wait();
+    revokeTxHash = tx.hash;
+    revokeBlockNumber = Number(receipt?.blockNumber ?? 0);
+    console.log(
+      `[Credential Service] Credential ${credentialId} revoked on chain (tx ${revokeTxHash})`
+    );
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error(`[Credential Service] Blockchain revoke failed:`, err);
+    throw new Error(`Could not revoke credential on chain: ${msg}.`);
   }
 
-  // Update local index
   const local = credentialIndex.get(credentialId);
   if (local) {
     local.status = "revoked";
     local.revokedAt = new Date().toISOString();
+    local.revokeTxHash = revokeTxHash;
+    local.revokeBlockNumber = revokeBlockNumber;
     persistIndex();
   }
 

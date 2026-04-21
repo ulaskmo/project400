@@ -147,7 +147,6 @@ export function IssuerPanel() {
       const body = {
         credentialId,
         holderDid: holderDid.trim(),
-        ipfsHash: `Qm${btoa(credentialId).slice(0, 40)}`,
         metadata: {
           type: "document",
           subjectName: documentName.trim(),
@@ -155,7 +154,13 @@ export function IssuerPanel() {
           issuedBy: user?.organizationName || user?.email,
           expiresAt: undefined,
           fileName: uploadedFile?.name,
-        }
+          issueDate: issueDate || undefined,
+        },
+        subjectFields: {
+          documentName: documentName.trim(),
+          issueDate: issueDate || undefined,
+          fileName: uploadedFile?.name,
+        },
       };
       await apiPost<Credential>("/credentials", body);
       setSuccess(`Credential "${documentName}" issued successfully to holder.`);

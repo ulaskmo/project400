@@ -22,6 +22,14 @@ export interface StoredCredentialRecord {
     subjectFields?: Record<string, unknown>;
   };
   onChain: boolean;
+  // On-chain transaction metadata (only set when blockchain write succeeded)
+  txHash?: string;
+  blockNumber?: number;
+  chainId?: number;
+  anchoredAt?: string;
+  // Revoke transaction metadata (set when the revoke tx was confirmed on-chain)
+  revokeTxHash?: string;
+  revokeBlockNumber?: number;
   // Full signed W3C Verifiable Credential (Ed25519). Optional for
   // backward compatibility with pre-migration credentials.
   vc?: unknown;

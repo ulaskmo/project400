@@ -244,7 +244,27 @@ export async function insertUser(user: StoredUser): Promise<void> {
     return;
   }
 
-  const { error } = await supabase.from("users").insert(userToRow(user));
+  const row = userToRow(user);
+  let { error } = await supabase.from("users").insert(row);
+  if (error && isMissingTrustColumn(error)) {
+    // Older Supabase projects don't have trust_level / trust_note yet.
+    // Retry without them and mirror to the sidestore so the feature
+    // still works end-to-end.
+    const { trust_level, trust_note, ...rowWithoutTrust } = row;
+    void trust_level;
+    void trust_note;
+    console.warn(
+      "[UserStorage] trust_level column missing — inserting without it and using sidestore"
+    );
+    const retry = await supabase.from("users").insert(rowWithoutTrust);
+    error = retry.error;
+    if (!error && user.trustLevel) {
+      writeTrustSidestore(user.id, {
+        trustLevel: user.trustLevel,
+        trustNote: user.trustNote,
+      });
+    }
+  }
   if (error) {
     if (error.code === "23505") throw new Error("Email already registered");
     throw new Error(`Failed to create user: ${error.message}`);

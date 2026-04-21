@@ -8,9 +8,10 @@ import { UserPanel } from "./components/UserPanel";
 import { IssuerPanel } from "./components/IssuerPanel";
 import { VerifierPanel } from "./components/VerifierPanel";
 import { AdminPanel } from "./components/AdminPanel";
+import { BlockchainPanel } from "./components/BlockchainPanel";
 import { ChatbotWidget } from "./components/ChatbotWidget";
 
-type Tab = "user" | "issuer" | "verifier" | "admin";
+type Tab = "user" | "issuer" | "verifier" | "admin" | "blockchain";
 
 // SVG Icons
 const ShieldIcon = () => (
@@ -93,16 +94,28 @@ function getAuthRoute(): "forgot" | "reset" | null {
   return null;
 }
 
+// Deep-link to a specific presentation request, produced by the verifier
+// panel via `${origin}/#/present/${id}`. When the user lands here we
+// route them to the holder inbox and auto-open that request.
+function getPresentId(): string | null {
+  const hash = window.location.hash;
+  if (hash.startsWith("#/present/")) {
+    return decodeURIComponent(hash.replace("#/present/", "")) || null;
+  }
+  return null;
+}
+
 function MainApp() {
   const { user, logout, hasRole, isLoading } = useAuth();
   const [publicVerifyId, setPublicVerifyId] = useState<string | null>(getPublicVerifyId());
   const [authRoute, setAuthRoute] = useState<"forgot" | "reset" | null>(getAuthRoute());
+  const [presentId, setPresentId] = useState<string | null>(getPresentId());
 
-  // Listen for URL changes
   useEffect(() => {
     const handleHashChange = () => {
       setPublicVerifyId(getPublicVerifyId());
       setAuthRoute(getAuthRoute());
+      setPresentId(getPresentId());
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
@@ -111,6 +124,12 @@ function MainApp() {
   // Determine default tab based on role
   const getDefaultTab = (): Tab => {
     if (!user) return "user";
+    // If the user is a holder and arrived via a /#/present/:id share
+    // link, drop them straight onto the Identity Holder panel so the
+    // inbox can auto-open the request.
+    if (presentId && (user.role === "holder" || user.role === "admin")) {
+      return "user";
+    }
     switch (user.role) {
       case "admin": return "admin";
       case "issuer": return "issuer";
@@ -121,12 +140,11 @@ function MainApp() {
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
 
-  // Update active tab when user changes (e.g. after login)
   useEffect(() => {
     if (user) {
       setActiveTab(getDefaultTab());
     }
-  }, [user?.role]);
+  }, [user?.role, presentId]);
 
   // Show public verification page if URL contains verify parameter
   if (publicVerifyId) {
@@ -167,6 +185,7 @@ function MainApp() {
       { id: "issuer", label: "Credential Issuer", icon: BuildingIcon, roles: ["issuer", "admin"] },
       { id: "verifier", label: "Verifier", icon: SearchIcon, roles: ["verifier", "admin"] },
       { id: "admin", label: "Admin Panel", icon: SettingsIcon, roles: ["admin"] },
+      { id: "blockchain", label: "Blockchain", icon: BlockchainIcon, roles: ["holder", "issuer", "verifier", "admin"] },
     ];
     return tabs.filter(tab => tab.roles.includes(user.role));
   };
@@ -258,10 +277,24 @@ function MainApp() {
 
       {/* Main Content */}
       <main className="main-content">
-        {activeTab === "user" && hasRole("holder", "admin") && <UserPanel />}
+        {activeTab === "user" && hasRole("holder", "admin") && (
+          <UserPanel presentRequestId={presentId ?? undefined} />
+        )}
         {activeTab === "issuer" && hasRole("issuer", "admin") && <IssuerPanel />}
         {activeTab === "verifier" && hasRole("verifier", "admin") && <VerifierPanel />}
         {activeTab === "admin" && hasRole("admin") && <AdminPanel />}
+        {activeTab === "blockchain" && (
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-icon"><BlockchainIcon /></div>
+              <h2 className="panel-title">Blockchain Explorer</h2>
+              <p className="panel-description">
+                Live status of the on-chain credential registry and proof that your credentials are anchored there.
+              </p>
+            </div>
+            <BlockchainPanel />
+          </div>
+        )}
       </main>
 
       {/* Footer */}
