@@ -283,6 +283,28 @@ export async function listRequestsByVerifier(
 }
 
 /**
+ * Silently trip "expired" status on any pending request whose expiresAt
+ * has passed. Callers can then filter by status === "pending".
+ */
+async function reapExpired(requests: PresentationRequest[]): Promise<PresentationRequest[]> {
+  const toExpire = requests.filter(
+    (r) => r.status === "pending" && isExpired(r)
+  );
+  await Promise.all(
+    toExpire.map((r) =>
+      markRequestExpired(r.id).catch(() => {
+        /* best effort */
+      })
+    )
+  );
+  if (toExpire.length === 0) return requests;
+  const expiredIds = new Set(toExpire.map((r) => r.id));
+  return requests.map((r) =>
+    expiredIds.has(r.id) ? { ...r, status: "expired" } : r
+  );
+}
+
+/**
  * Returns the set of requests that should appear in the holder's inbox:
  * (a) pending requests directly targeted at their DID, AND
  * (b) pending broadcast requests the holder explicitly expressed interest in.
@@ -295,35 +317,34 @@ export async function listRequestsForHolder(
   const interestedIds = new Set(interests.map((i) => i.requestId));
 
   const sb = pexSupabase();
+  let all: PresentationRequest[];
   if (!sb) {
-    return loadRequests()
-      .filter(
-        (r) =>
-          r.status === "pending" &&
-          ((r.audience === "direct" && r.targetHolderDid === holderDid) ||
-            (r.audience === "broadcast" && interestedIds.has(r.id)))
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
-  const { data, error } = await sb
-    .from("presentation_requests")
-    .select("*")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
-  if (error) {
-    if (supabaseTableMissing(error)) {
-      disablePexSupabase(error.message);
-      return listRequestsForHolder(holderUserId, holderDid);
+    all = loadRequests();
+  } else {
+    const { data, error } = await sb
+      .from("presentation_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) {
+      if (supabaseTableMissing(error)) {
+        disablePexSupabase(error.message);
+        return listRequestsForHolder(holderUserId, holderDid);
+      }
+      return [];
     }
-    return [];
+    all = (data as RequestRow[]).map(rowToRequest);
   }
-  return (data as RequestRow[])
-    .map(rowToRequest)
+
+  all = await reapExpired(all);
+  return all
     .filter(
       (r) =>
-        (r.audience === "direct" && r.targetHolderDid === holderDid) ||
-        (r.audience === "broadcast" && interestedIds.has(r.id))
-    );
+        r.status === "pending" &&
+        ((r.audience === "direct" && r.targetHolderDid === holderDid) ||
+          (r.audience === "broadcast" && interestedIds.has(r.id)))
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 /**
@@ -331,25 +352,32 @@ export async function listRequestsForHolder(
  */
 export async function listBroadcastRequests(): Promise<PresentationRequest[]> {
   const sb = pexSupabase();
+  let all: PresentationRequest[];
   if (!sb) {
-    return loadRequests()
-      .filter((r) => r.status === "pending" && r.audience === "broadcast")
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
-  const { data, error } = await sb
-    .from("presentation_requests")
-    .select("*")
-    .eq("status", "pending")
-    .is("target_holder_did", null)
-    .order("created_at", { ascending: false });
-  if (error) {
-    if (supabaseTableMissing(error)) {
-      disablePexSupabase(error.message);
-      return listBroadcastRequests();
+    all = loadRequests();
+  } else {
+    const { data, error } = await sb
+      .from("presentation_requests")
+      .select("*")
+      .eq("status", "pending")
+      .is("target_holder_did", null)
+      .order("created_at", { ascending: false });
+    if (error) {
+      if (supabaseTableMissing(error)) {
+        disablePexSupabase(error.message);
+        return listBroadcastRequests();
+      }
+      return [];
     }
-    return [];
+    all = (data as RequestRow[]).map(rowToRequest);
   }
-  return (data as RequestRow[]).map(rowToRequest);
+
+  all = await reapExpired(all);
+  return all
+    .filter(
+      (r) => r.status === "pending" && r.audience === "broadcast"
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 /**
@@ -412,6 +440,34 @@ async function markRequestFulfilled(id: string): Promise<void> {
   }
 }
 
+export async function markRequestExpired(id: string): Promise<void> {
+  const sb = pexSupabase();
+  if (!sb) {
+    const all = readJson<PresentationRequest>(REQUESTS_FILE);
+    const idx = all.findIndex((r) => r.id === id);
+    if (idx >= 0 && all[idx].status === "pending") {
+      all[idx].status = "expired";
+      writeJson(REQUESTS_FILE, all);
+    }
+    return;
+  }
+  const { error } = await sb
+    .from("presentation_requests")
+    .update({ status: "expired" })
+    .eq("id", id)
+    .eq("status", "pending");
+  if (error && supabaseTableMissing(error)) {
+    disablePexSupabase(error.message);
+    await markRequestExpired(id);
+  }
+}
+
+export function isExpired(req: PresentationRequest): boolean {
+  return (
+    !!req.expiresAt && new Date(req.expiresAt).getTime() <= Date.now()
+  );
+}
+
 export async function submitResponse(params: {
   requestId: string;
   holderUserId: string;
@@ -423,6 +479,15 @@ export async function submitResponse(params: {
   const req = await getRequest(params.requestId);
   if (!req) throw new Error("Presentation request not found");
   if (req.status !== "pending") throw new Error("Request is no longer pending");
+  if (isExpired(req)) {
+    // Lazy state transition: flip to "expired" so subsequent reads see it.
+    await markRequestExpired(req.id).catch(() => {
+      /* best-effort */
+    });
+    throw new Error(
+      "This presentation request has expired and no longer accepts responses"
+    );
+  }
 
   const vpCheck = await verifyVerifiablePresentation(params.vp);
 

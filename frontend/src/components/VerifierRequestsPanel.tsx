@@ -67,14 +67,76 @@ export function VerifierRequestsPanel() {
     Record<string, VerificationDetail>
   >({});
 
+  type ExpiryMode = "preset" | "custom" | "never";
+  type ExpiryPreset =
+    | "5m"
+    | "30m"
+    | "1h"
+    | "6h"
+    | "24h"
+    | "3d"
+    | "7d"
+    | "30d"
+    | "90d";
+
+  const presetToHours: Record<ExpiryPreset, number> = {
+    "5m": 5 / 60,
+    "30m": 0.5,
+    "1h": 1,
+    "6h": 6,
+    "24h": 24,
+    "3d": 72,
+    "7d": 168,
+    "30d": 720,
+    "90d": 2160,
+  };
+
+  const presetLabels: Record<ExpiryPreset, string> = {
+    "5m": "5 minutes",
+    "30m": "30 minutes",
+    "1h": "1 hour",
+    "6h": "6 hours",
+    "24h": "1 day",
+    "3d": "3 days",
+    "7d": "1 week",
+    "30d": "30 days",
+    "90d": "90 days",
+  };
+
   const [form, setForm] = useState({
     purpose: "",
     requiredTypes: "",
     requiredFields: "",
     audience: "broadcast" as "direct" | "broadcast",
     targetHolderDid: "",
-    expiresInHours: "",
+    expiryMode: "preset" as ExpiryMode,
+    expiryPreset: "24h" as ExpiryPreset,
+    // Custom duration: number + unit (minutes/hours/days/weeks)
+    customAmount: "2",
+    customUnit: "days" as "minutes" | "hours" | "days" | "weeks",
+    customDateTime: "",
   });
+
+  const computeExpiresAt = (): string | undefined => {
+    if (form.expiryMode === "never") return undefined;
+    if (form.expiryMode === "preset") {
+      const hours = presetToHours[form.expiryPreset];
+      return new Date(Date.now() + hours * 3600 * 1000).toISOString();
+    }
+    // custom
+    if (form.customDateTime) {
+      return new Date(form.customDateTime).toISOString();
+    }
+    const amount = Number(form.customAmount) || 0;
+    if (amount <= 0) return undefined;
+    const unitMs: Record<typeof form.customUnit, number> = {
+      minutes: 60 * 1000,
+      hours: 3600 * 1000,
+      days: 86400 * 1000,
+      weeks: 7 * 86400 * 1000,
+    };
+    return new Date(Date.now() + amount * unitMs[form.customUnit]).toISOString();
+  };
 
   const loadRequests = async () => {
     setLoading(true);
@@ -117,9 +179,11 @@ export function VerifierRequestsPanel() {
         }
       }
     }
-    const expiresAt = form.expiresInHours
-      ? new Date(Date.now() + Number(form.expiresInHours) * 3600 * 1000).toISOString()
-      : undefined;
+    const expiresAt = computeExpiresAt();
+    if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+      setError("Expiry must be in the future");
+      return;
+    }
     if (form.audience === "direct" && !form.targetHolderDid.trim()) {
       setError("Direct requests need a target holder DID");
       return;
@@ -140,7 +204,11 @@ export function VerifierRequestsPanel() {
         requiredFields: "",
         audience: "broadcast",
         targetHolderDid: "",
-        expiresInHours: "",
+        expiryMode: "preset",
+        expiryPreset: "24h",
+        customAmount: "2",
+        customUnit: "days",
+        customDateTime: "",
       });
       setShowCreate(false);
       loadRequests();
@@ -506,17 +574,136 @@ export function VerifierRequestsPanel() {
                 </div>
               )}
               <div className="input-group">
-                <label className="input-label">Expires in (hours)</label>
-                <input
-                  className="input"
-                  type="number"
-                  min="1"
-                  value={form.expiresInHours}
-                  onChange={(e) =>
-                    setForm({ ...form, expiresInHours: e.target.value })
-                  }
-                  placeholder="24"
-                />
+                <label className="input-label">Expires</label>
+                <p
+                  style={{
+                    fontSize: "0.7rem",
+                    color: "var(--gray-500)",
+                    marginTop: 0,
+                    marginBottom: 6,
+                  }}
+                >
+                  After this, the request auto-expires and no holder
+                  (including interested ones) can submit a response. Shorter
+                  is safer (fresher consent, replay-proof); longer is ok for
+                  slow community broadcasts.
+                </p>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                  {(["preset", "custom", "never"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`btn ${form.expiryMode === mode ? "btn-primary" : "btn-secondary"}`}
+                      onClick={() => setForm({ ...form, expiryMode: mode })}
+                      style={{ padding: "4px 10px", fontSize: "0.7rem" }}
+                    >
+                      {mode === "preset" ? "Quick pick" : mode === "custom" ? "Custom" : "Never"}
+                    </button>
+                  ))}
+                </div>
+
+                {form.expiryMode === "preset" && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {(Object.keys(presetLabels) as ExpiryPreset[]).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`btn ${form.expiryPreset === p ? "btn-primary" : "btn-secondary"}`}
+                        onClick={() => setForm({ ...form, expiryPreset: p })}
+                        style={{ padding: "4px 10px", fontSize: "0.7rem" }}
+                      >
+                        {presetLabels[p]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {form.expiryMode === "custom" && (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        alignItems: "center",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <input
+                        className="input"
+                        type="number"
+                        min="1"
+                        style={{ maxWidth: 90 }}
+                        value={form.customAmount}
+                        onChange={(e) =>
+                          setForm({ ...form, customAmount: e.target.value, customDateTime: "" })
+                        }
+                      />
+                      <select
+                        className="input"
+                        style={{ maxWidth: 130 }}
+                        value={form.customUnit}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            customUnit: e.target.value as typeof form.customUnit,
+                            customDateTime: "",
+                          })
+                        }
+                      >
+                        <option value="minutes">minutes</option>
+                        <option value="hours">hours</option>
+                        <option value="days">days</option>
+                        <option value="weeks">weeks</option>
+                      </select>
+                      <span style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>
+                        from now
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--gray-500)", marginBottom: 4 }}>
+                      or pick an exact date/time:
+                    </div>
+                    <input
+                      className="input"
+                      type="datetime-local"
+                      value={form.customDateTime}
+                      onChange={(e) =>
+                        setForm({ ...form, customDateTime: e.target.value })
+                      }
+                    />
+                  </>
+                )}
+
+                {form.expiryMode === "never" && (
+                  <div
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "var(--warning-700, #92400e)",
+                      background: "var(--warning-50, #fffbeb)",
+                      border: "1px solid var(--warning-200, #fde68a)",
+                      padding: "8px 10px",
+                      borderRadius: 6,
+                    }}
+                  >
+                    ⚠ Requests without an expiry stay open indefinitely. Only
+                    use this for evergreen policy checks you control; for
+                    campaigns or ad-hoc asks prefer a quick pick.
+                  </div>
+                )}
+
+                {(() => {
+                  const ea = computeExpiresAt();
+                  if (!ea)
+                    return (
+                      <div style={{ fontSize: "0.7rem", color: "var(--gray-500)", marginTop: 6 }}>
+                        Will not expire automatically.
+                      </div>
+                    );
+                  return (
+                    <div style={{ fontSize: "0.7rem", color: "var(--gray-500)", marginTop: 6 }}>
+                      Will expire on <strong>{new Date(ea).toLocaleString()}</strong>
+                    </div>
+                  );
+                })()}
               </div>
               <button type="submit" className="btn btn-primary btn-lg w-full">
                 Create Request
