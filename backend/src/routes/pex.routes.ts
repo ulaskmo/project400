@@ -1,16 +1,20 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth";
 import {
-  handleCreateRequest,
-  handleListMyRequests,
-  handleGetRequest,
   handleCancelRequest,
+  handleCheckInterest,
+  handleCreateRequest,
+  handleExpressInterest,
+  handleFlowFeed,
+  handleGetRequest,
   handleInbox,
-  handleMyResponses,
+  handleListMyRequests,
   handleListRequestResponses,
   handleMatchRequest,
+  handleMyResponses,
   handleSubmitResponse,
   handleVerifyResponse,
+  handleWithdrawInterest,
 } from "../controllers/presentationController";
 
 const router = Router();
@@ -20,6 +24,14 @@ router.get("/requests/:id", handleGetRequest);
 
 // Authenticated routes
 router.use(authenticate);
+
+// Flow feed
+router.get("/flow", handleFlowFeed);
+
+// Interests
+router.post("/requests/:id/interest", handleExpressInterest);
+router.delete("/requests/:id/interest", handleWithdrawInterest);
+router.get("/requests/:id/interest", handleCheckInterest);
 
 // Verifier endpoints
 router.post("/requests", handleCreateRequest);

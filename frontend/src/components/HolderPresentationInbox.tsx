@@ -377,9 +377,24 @@ export function HolderPresentationInbox() {
       ) : (
         <>
           {requests.length === 0 ? (
-            <p style={{ textAlign: "center", color: "var(--gray-500)", padding: "var(--space-5)" }}>
-              No pending presentation requests.
-            </p>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "var(--space-6)",
+                background: "var(--surface-inset)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--gray-500)",
+              }}
+            >
+              <div style={{ fontSize: "2rem", marginBottom: 8 }}>📬</div>
+              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--gray-700)" }}>
+                Inbox is empty
+              </div>
+              <div style={{ fontSize: "0.8rem", marginTop: 6 }}>
+                Requests appear here when (a) a verifier targets your DID directly
+                or (b) you opt in to a broadcast from the <strong>Flow</strong> tab.
+              </div>
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {requests.map((r) => (

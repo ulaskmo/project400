@@ -8,14 +8,20 @@ import {
   verifyVerifiablePresentation,
 } from "../services/vcService";
 import {
+  addInterest,
   cancelRequest,
   createRequest,
   credentialMatchesRequest,
   getRequest,
+  hasExpressedInterest,
+  listBroadcastRequests,
+  listInterestsForHolder,
+  listInterestsForRequest,
   listRequestsByVerifier,
   listRequestsForHolder,
   listResponsesByHolder,
   listResponsesForRequest,
+  removeInterest,
   submitResponse,
 } from "../services/presentationService";
 
@@ -36,13 +42,27 @@ export const handleCreateRequest = async (
       requiredTypes,
       requiredFields,
       targetHolderDid,
+      audience,
       expiresAt,
-    } = req.body;
+    } = req.body as {
+      purpose: string;
+      requiredTypes: string[];
+      requiredFields?: Record<string, string[]>;
+      targetHolderDid?: string;
+      audience?: "direct" | "broadcast";
+      expiresAt?: string;
+    };
 
     if (!purpose || !Array.isArray(requiredTypes) || requiredTypes.length === 0) {
       res
         .status(400)
         .json({ message: "purpose and requiredTypes[] are required" });
+      return;
+    }
+    if (audience === "direct" && !targetHolderDid) {
+      res
+        .status(400)
+        .json({ message: "Direct requests must include targetHolderDid" });
       return;
     }
 
@@ -53,7 +73,8 @@ export const handleCreateRequest = async (
       purpose,
       requiredTypes,
       requiredFields,
-      targetHolderDid,
+      targetHolderDid: audience === "broadcast" ? undefined : targetHolderDid,
+      audience: audience ?? (targetHolderDid ? "direct" : "broadcast"),
       expiresAt,
     });
     res.status(201).json(request);
@@ -139,8 +160,124 @@ export const handleInbox = async (
       res.json([]);
       return;
     }
-    const requests = await listRequestsForHolder(user.did);
+    const requests = await listRequestsForHolder(req.user.id, user.did);
     res.json(requests);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * Public-to-logged-in feed of open broadcast requests.
+ * Enriches each request with the verifier's trust level + org name and
+ * whether the current user has expressed interest / already responded.
+ */
+export const handleFlowFeed = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const requests = await listBroadcastRequests();
+    const myInterestIds = req.user
+      ? new Set(
+          listInterestsForHolder(req.user.id).map((i) => i.requestId)
+        )
+      : new Set<string>();
+    const myResponses = req.user
+      ? new Set(
+          (await listResponsesByHolder(req.user.id)).map((r) => r.requestId)
+        )
+      : new Set<string>();
+
+    const enriched = await Promise.all(
+      requests.map(async (r) => {
+        const verifier = await getUserById(r.verifierUserId);
+        return {
+          ...r,
+          verifierName: verifier?.organizationName || verifier?.email || r.verifierName,
+          verifierTrustLevel: verifier?.trustLevel ?? "unverified",
+          verifierRole: verifier?.role,
+          interested: myInterestIds.has(r.id),
+          alreadyResponded: myResponses.has(r.id),
+          interestedCount: listInterestsForRequest(r.id).length,
+        };
+      })
+    );
+    res.json(enriched);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const handleExpressInterest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+    const user = await getUserById(req.user.id);
+    if (!user?.did) {
+      res
+        .status(400)
+        .json({ message: "You need a DID to interact with the flow" });
+      return;
+    }
+    const request = await getRequest(req.params.id);
+    if (!request) {
+      res.status(404).json({ message: "Request not found" });
+      return;
+    }
+    if (request.audience !== "broadcast") {
+      res.status(400).json({
+        message: "Only broadcast requests accept interest opt-ins",
+      });
+      return;
+    }
+    const row = addInterest({
+      requestId: request.id,
+      holderUserId: req.user.id,
+      holderDid: user.did,
+    });
+    res.status(201).json(row);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const handleWithdrawInterest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+    const ok = removeInterest(req.user.id, req.params.id);
+    res.json({ removed: ok });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const handleCheckInterest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+    const interested = hasExpressedInterest(req.user.id, req.params.id);
+    res.json({ interested });
   } catch (e) {
     next(e);
   }

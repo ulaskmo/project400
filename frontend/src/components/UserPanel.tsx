@@ -2,6 +2,7 @@ import { useState } from "react";
 import { WalletPanel } from "./WalletPanel";
 import { FriendsPanel } from "./FriendsPanel";
 import { HolderPresentationInbox } from "./HolderPresentationInbox";
+import { FlowPanel } from "./FlowPanel";
 
 const FingerprintIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -34,7 +35,14 @@ const InboxIcon = () => (
   </svg>
 );
 
-type SubTab = "wallet" | "inbox" | "friends";
+const FlowIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
+    <circle cx="12" cy="12" r="4"/>
+  </svg>
+);
+
+type SubTab = "wallet" | "flow" | "inbox" | "friends";
 
 export function UserPanel() {
   const [subTab, setSubTab] = useState<SubTab>("wallet");
@@ -43,6 +51,10 @@ export function UserPanel() {
     wallet: {
       title: "My Digital Identity",
       description: "Your decentralized identity and credential wallet.",
+    },
+    flow: {
+      title: "Community Flow",
+      description: "Discover verifier broadcasts and opt in to ones that interest you.",
     },
     inbox: {
       title: "Presentation Inbox",
@@ -91,6 +103,11 @@ export function UserPanel() {
           <span style={{ width: 16, height: 16 }}><WalletIcon /></span>
           Wallet
         </button>
+        <button style={tabStyle(subTab === "flow")}
+          onClick={() => setSubTab("flow")}>
+          <span style={{ width: 16, height: 16 }}><FlowIcon /></span>
+          Flow
+        </button>
         <button style={tabStyle(subTab === "inbox")}
           onClick={() => setSubTab("inbox")}>
           <span style={{ width: 16, height: 16 }}><InboxIcon /></span>
@@ -104,6 +121,7 @@ export function UserPanel() {
       </div>
 
       {subTab === "wallet" && <WalletPanel />}
+      {subTab === "flow" && <FlowPanel />}
       {subTab === "inbox" && <HolderPresentationInbox />}
       {subTab === "friends" && <FriendsPanel />}
     </div>

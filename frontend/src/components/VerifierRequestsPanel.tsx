@@ -12,6 +12,7 @@ interface PresentationRequest {
   requiredTypes: string[];
   requiredFields?: Record<string, string[]>;
   targetHolderDid?: string;
+  audience: "direct" | "broadcast";
   status: "pending" | "fulfilled" | "expired" | "cancelled";
   expiresAt?: string;
   createdAt: string;
@@ -70,6 +71,7 @@ export function VerifierRequestsPanel() {
     purpose: "",
     requiredTypes: "",
     requiredFields: "",
+    audience: "broadcast" as "direct" | "broadcast",
     targetHolderDid: "",
     expiresInHours: "",
   });
@@ -118,18 +120,25 @@ export function VerifierRequestsPanel() {
     const expiresAt = form.expiresInHours
       ? new Date(Date.now() + Number(form.expiresInHours) * 3600 * 1000).toISOString()
       : undefined;
+    if (form.audience === "direct" && !form.targetHolderDid.trim()) {
+      setError("Direct requests need a target holder DID");
+      return;
+    }
     try {
       await apiPost<PresentationRequest>("/pex/requests", {
         purpose: form.purpose,
         requiredTypes,
         requiredFields,
-        targetHolderDid: form.targetHolderDid || undefined,
+        audience: form.audience,
+        targetHolderDid:
+          form.audience === "direct" ? form.targetHolderDid : undefined,
         expiresAt,
       });
       setForm({
         purpose: "",
         requiredTypes: "",
         requiredFields: "",
+        audience: "broadcast",
         targetHolderDid: "",
         expiresInHours: "",
       });
@@ -457,16 +466,45 @@ export function VerifierRequestsPanel() {
                 </p>
               </div>
               <div className="input-group">
-                <label className="input-label">Target holder DID (optional)</label>
-                <input
-                  className="input input-mono"
-                  value={form.targetHolderDid}
-                  onChange={(e) =>
-                    setForm({ ...form, targetHolderDid: e.target.value })
-                  }
-                  placeholder="Leave empty for open/QR-shared requests"
-                />
+                <label className="input-label">Audience *</label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className={`btn ${form.audience === "broadcast" ? "btn-primary" : "btn-secondary"}`}
+                    onClick={() => setForm({ ...form, audience: "broadcast" })}
+                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                  >
+                    Broadcast (all holders)
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${form.audience === "direct" ? "btn-primary" : "btn-secondary"}`}
+                    onClick={() => setForm({ ...form, audience: "direct" })}
+                    style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                  >
+                    Specific holder (DID)
+                  </button>
+                </div>
+                <p style={{ fontSize: "0.7rem", color: "var(--gray-500)", marginTop: 4 }}>
+                  {form.audience === "broadcast"
+                    ? "Posts to the community Flow page. Interested holders opt in and receive it in their inbox."
+                    : "Only the holder with this DID can see the request in their inbox."}
+                </p>
               </div>
+              {form.audience === "direct" && (
+                <div className="input-group">
+                  <label className="input-label">Target holder DID *</label>
+                  <input
+                    className="input input-mono"
+                    value={form.targetHolderDid}
+                    onChange={(e) =>
+                      setForm({ ...form, targetHolderDid: e.target.value })
+                    }
+                    placeholder="did:chainshield:..."
+                    required
+                  />
+                </div>
+              )}
               <div className="input-group">
                 <label className="input-label">Expires in (hours)</label>
                 <input
@@ -517,8 +555,30 @@ export function VerifierRequestsPanel() {
               onClick={() => openRequest(r)}
             >
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 600, color: "var(--gray-800)" }}>{r.purpose}</div>
-                <div style={{ fontSize: "0.75rem", color: "var(--gray-500)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600, color: "var(--gray-800)" }}>{r.purpose}</span>
+                  <span
+                    style={{
+                      fontSize: "0.65rem",
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background:
+                        r.audience === "broadcast"
+                          ? "var(--brand-100)"
+                          : "var(--surface-inset)",
+                      color:
+                        r.audience === "broadcast"
+                          ? "var(--brand-700)"
+                          : "var(--gray-700)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {r.audience === "broadcast" ? "📣 Broadcast" : "🎯 Direct"}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "var(--gray-500)", marginTop: 2 }}>
                   {r.requiredTypes.join(" · ")} • created {new Date(r.createdAt).toLocaleString()}
                 </div>
                 {r.targetHolderDid && (

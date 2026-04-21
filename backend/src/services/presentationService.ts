@@ -20,6 +20,7 @@ import {
 const DATA_DIR = join(process.cwd(), "data");
 const REQUESTS_FILE = join(DATA_DIR, "pex_requests.json");
 const RESPONSES_FILE = join(DATA_DIR, "pex_responses.json");
+const INTERESTS_FILE = join(DATA_DIR, "pex_interests.json");
 
 const isSupabaseEnabled = Boolean(env.supabaseUrl && env.supabaseServiceRoleKey);
 let supabase: SupabaseClient | null = null;
@@ -54,17 +55,28 @@ function pexSupabase(): SupabaseClient | null {
   return pexTablesAvailable ? supabase : null;
 }
 
+export type RequestAudience = "direct" | "broadcast";
+
 export interface PresentationRequest {
   id: string;
   verifierUserId: string;
   verifierDid: string;
   verifierName?: string;
+  verifierTrustLevel?: "unverified" | "verified" | "accredited";
   purpose: string;
   requiredTypes: string[];
   requiredFields?: Record<string, string[]>;
   targetHolderDid?: string;
+  audience: RequestAudience;
   status: "pending" | "fulfilled" | "expired" | "cancelled";
   expiresAt?: string;
+  createdAt: string;
+}
+
+export interface PresentationInterest {
+  requestId: string;
+  holderUserId: string;
+  holderDid: string;
   createdAt: string;
 }
 
@@ -119,6 +131,7 @@ interface RequestRow {
 }
 
 function rowToRequest(row: RequestRow): PresentationRequest {
+  const targetHolderDid = row.target_holder_did ?? undefined;
   return {
     id: row.id,
     verifierUserId: row.verifier_user_id,
@@ -127,7 +140,8 @@ function rowToRequest(row: RequestRow): PresentationRequest {
     purpose: row.purpose,
     requiredTypes: row.required_types,
     requiredFields: row.required_fields ?? undefined,
-    targetHolderDid: row.target_holder_did ?? undefined,
+    targetHolderDid,
+    audience: targetHolderDid ? "direct" : "broadcast",
     status: row.status as PresentationRequest["status"],
     expiresAt: row.expires_at ?? undefined,
     createdAt: row.created_at,
@@ -170,8 +184,11 @@ export async function createRequest(params: {
   requiredTypes: string[];
   requiredFields?: Record<string, string[]>;
   targetHolderDid?: string;
+  audience?: RequestAudience;
   expiresAt?: string;
 }): Promise<PresentationRequest> {
+  const audience: RequestAudience =
+    params.audience ?? (params.targetHolderDid ? "direct" : "broadcast");
   const row: PresentationRequest = {
     id: randomUUID(),
     verifierUserId: params.verifierUserId,
@@ -180,7 +197,8 @@ export async function createRequest(params: {
     purpose: params.purpose,
     requiredTypes: params.requiredTypes,
     requiredFields: params.requiredFields,
-    targetHolderDid: params.targetHolderDid,
+    targetHolderDid: audience === "broadcast" ? undefined : params.targetHolderDid,
+    audience,
     status: "pending",
     expiresAt: params.expiresAt,
     createdAt: new Date().toISOString(),
@@ -264,16 +282,26 @@ export async function listRequestsByVerifier(
   return (data as RequestRow[]).map(rowToRequest);
 }
 
+/**
+ * Returns the set of requests that should appear in the holder's inbox:
+ * (a) pending requests directly targeted at their DID, AND
+ * (b) pending broadcast requests the holder explicitly expressed interest in.
+ */
 export async function listRequestsForHolder(
+  holderUserId: string,
   holderDid: string
 ): Promise<PresentationRequest[]> {
+  const interests = listInterestsForHolder(holderUserId);
+  const interestedIds = new Set(interests.map((i) => i.requestId));
+
   const sb = pexSupabase();
   if (!sb) {
-    return readJson<PresentationRequest>(REQUESTS_FILE)
+    return loadRequests()
       .filter(
         (r) =>
           r.status === "pending" &&
-          (r.targetHolderDid === holderDid || !r.targetHolderDid)
+          ((r.audience === "direct" && r.targetHolderDid === holderDid) ||
+            (r.audience === "broadcast" && interestedIds.has(r.id)))
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
@@ -281,16 +309,58 @@ export async function listRequestsForHolder(
     .from("presentation_requests")
     .select("*")
     .eq("status", "pending")
-    .or(`target_holder_did.eq.${holderDid},target_holder_did.is.null`)
     .order("created_at", { ascending: false });
   if (error) {
     if (supabaseTableMissing(error)) {
       disablePexSupabase(error.message);
-      return listRequestsForHolder(holderDid);
+      return listRequestsForHolder(holderUserId, holderDid);
+    }
+    return [];
+  }
+  return (data as RequestRow[])
+    .map(rowToRequest)
+    .filter(
+      (r) =>
+        (r.audience === "direct" && r.targetHolderDid === holderDid) ||
+        (r.audience === "broadcast" && interestedIds.has(r.id))
+    );
+}
+
+/**
+ * Returns open broadcast requests for the public flow/feed.
+ */
+export async function listBroadcastRequests(): Promise<PresentationRequest[]> {
+  const sb = pexSupabase();
+  if (!sb) {
+    return loadRequests()
+      .filter((r) => r.status === "pending" && r.audience === "broadcast")
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  const { data, error } = await sb
+    .from("presentation_requests")
+    .select("*")
+    .eq("status", "pending")
+    .is("target_holder_did", null)
+    .order("created_at", { ascending: false });
+  if (error) {
+    if (supabaseTableMissing(error)) {
+      disablePexSupabase(error.message);
+      return listBroadcastRequests();
     }
     return [];
   }
   return (data as RequestRow[]).map(rowToRequest);
+}
+
+/**
+ * Hydrates a list of requests with audience defaults for legacy rows
+ * (rows created before the audience field existed).
+ */
+function loadRequests(): PresentationRequest[] {
+  return readJson<PresentationRequest>(REQUESTS_FILE).map((r) => ({
+    ...r,
+    audience: r.audience ?? (r.targetHolderDid ? "direct" : "broadcast"),
+  }));
 }
 
 export async function cancelRequest(
@@ -399,7 +469,10 @@ export async function submitResponse(params: {
     }
   }
 
-  await markRequestFulfilled(params.requestId);
+  // Broadcast requests stay open so other interested holders can respond too.
+  if (req.audience === "direct") {
+    await markRequestFulfilled(params.requestId);
+  }
   return row;
 }
 
@@ -449,6 +522,72 @@ export async function listResponsesByHolder(
     return [];
   }
   return (data as ResponseRow[]).map(rowToResponse);
+}
+
+// ---------- Interest tracking (local JSON sidestore) ----------
+
+function loadInterests(): PresentationInterest[] {
+  return readJson<PresentationInterest>(INTERESTS_FILE);
+}
+
+function saveInterests(all: PresentationInterest[]): void {
+  writeJson(INTERESTS_FILE, all);
+}
+
+export function listInterestsForHolder(
+  holderUserId: string
+): PresentationInterest[] {
+  return loadInterests().filter((i) => i.holderUserId === holderUserId);
+}
+
+export function listInterestsForRequest(
+  requestId: string
+): PresentationInterest[] {
+  return loadInterests().filter((i) => i.requestId === requestId);
+}
+
+export function hasExpressedInterest(
+  holderUserId: string,
+  requestId: string
+): boolean {
+  return loadInterests().some(
+    (i) => i.holderUserId === holderUserId && i.requestId === requestId
+  );
+}
+
+export function addInterest(params: {
+  requestId: string;
+  holderUserId: string;
+  holderDid: string;
+}): PresentationInterest {
+  const all = loadInterests();
+  const existing = all.find(
+    (i) =>
+      i.requestId === params.requestId && i.holderUserId === params.holderUserId
+  );
+  if (existing) return existing;
+  const row: PresentationInterest = {
+    requestId: params.requestId,
+    holderUserId: params.holderUserId,
+    holderDid: params.holderDid,
+    createdAt: new Date().toISOString(),
+  };
+  all.push(row);
+  saveInterests(all);
+  return row;
+}
+
+export function removeInterest(
+  holderUserId: string,
+  requestId: string
+): boolean {
+  const all = loadInterests();
+  const filtered = all.filter(
+    (i) => !(i.holderUserId === holderUserId && i.requestId === requestId)
+  );
+  if (filtered.length === all.length) return false;
+  saveInterests(filtered);
+  return true;
 }
 
 /**

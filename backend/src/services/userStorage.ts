@@ -5,6 +5,7 @@ import { env } from "../config/env";
 
 const DATA_DIR = join(process.cwd(), "data");
 const USERS_FILE = join(DATA_DIR, "users.json");
+const TRUST_SIDESTORE_FILE = join(DATA_DIR, "user_trust.json");
 
 export type TrustLevel = "unverified" | "verified" | "accredited";
 
@@ -98,8 +99,68 @@ function saveToFile(users: StoredUser[]): void {
   }
 }
 
+// ---------- Trust sidestore ----------
+// Persists trust_level / trust_note in a local JSON file so the feature
+// works even if the Supabase trust_level column hasn't been added yet.
+
+type TrustSidestore = Record<string, { trustLevel?: TrustLevel; trustNote?: string }>;
+
+function loadTrustSidestore(): TrustSidestore {
+  try {
+    ensureDataDir();
+    if (existsSync(TRUST_SIDESTORE_FILE)) {
+      return JSON.parse(readFileSync(TRUST_SIDESTORE_FILE, "utf8"));
+    }
+  } catch (err) {
+    console.error("[UserStorage] Failed to load trust sidestore:", err);
+  }
+  return {};
+}
+
+function saveTrustSidestore(store: TrustSidestore): void {
+  try {
+    ensureDataDir();
+    writeFileSync(TRUST_SIDESTORE_FILE, JSON.stringify(store, null, 2), "utf8");
+  } catch (err) {
+    console.error("[UserStorage] Failed to save trust sidestore:", err);
+  }
+}
+
+function applyTrustSidestore(user: StoredUser): StoredUser {
+  const store = loadTrustSidestore();
+  const override = store[user.id];
+  if (!override) return user;
+  return {
+    ...user,
+    trustLevel: override.trustLevel ?? user.trustLevel,
+    trustNote: override.trustNote ?? user.trustNote,
+  };
+}
+
+function writeTrustSidestore(
+  userId: string,
+  updates: { trustLevel?: TrustLevel; trustNote?: string }
+) {
+  const store = loadTrustSidestore();
+  store[userId] = { ...store[userId], ...updates };
+  saveTrustSidestore(store);
+}
+
+function isMissingTrustColumn(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false;
+  const msg = (err.message || "").toLowerCase();
+  // 42703 = undefined_column, PGRST204 = missing column in schema cache
+  return (
+    err.code === "42703" ||
+    err.code === "PGRST204" ||
+    msg.includes("trust_level") ||
+    msg.includes("trust_note") ||
+    (msg.includes("column") && msg.includes("does not exist"))
+  );
+}
+
 export async function loadAllUsers(): Promise<StoredUser[]> {
-  if (!supabase) return loadFromFile();
+  if (!supabase) return loadFromFile().map(applyTrustSidestore);
 
   const { data, error } = await supabase
     .from("users")
@@ -110,12 +171,13 @@ export async function loadAllUsers(): Promise<StoredUser[]> {
     console.error("[UserStorage] Supabase loadAllUsers failed:", error.message);
     return [];
   }
-  return (data as UserRow[]).map(rowToUser);
+  return (data as UserRow[]).map(rowToUser).map(applyTrustSidestore);
 }
 
 export async function getUserByEmailFromStore(email: string): Promise<StoredUser | null> {
   if (!supabase) {
-    return loadFromFile().find((u) => u.email === email) ?? null;
+    const u = loadFromFile().find((u) => u.email === email);
+    return u ? applyTrustSidestore(u) : null;
   }
 
   const { data, error } = await supabase
@@ -128,12 +190,13 @@ export async function getUserByEmailFromStore(email: string): Promise<StoredUser
     console.error("[UserStorage] Supabase getUserByEmail failed:", error.message);
     return null;
   }
-  return data ? rowToUser(data as UserRow) : null;
+  return data ? applyTrustSidestore(rowToUser(data as UserRow)) : null;
 }
 
 export async function getUserByIdFromStore(id: string): Promise<StoredUser | null> {
   if (!supabase) {
-    return loadFromFile().find((u) => u.id === id) ?? null;
+    const u = loadFromFile().find((u) => u.id === id);
+    return u ? applyTrustSidestore(u) : null;
   }
 
   const { data, error } = await supabase
@@ -146,14 +209,15 @@ export async function getUserByIdFromStore(id: string): Promise<StoredUser | nul
     console.error("[UserStorage] Supabase getUserById failed:", error.message);
     return null;
   }
-  return data ? rowToUser(data as UserRow) : null;
+  return data ? applyTrustSidestore(rowToUser(data as UserRow)) : null;
 }
 
 export async function getUserByDidFromStore(
   did: string
 ): Promise<StoredUser | null> {
   if (!supabase) {
-    return loadFromFile().find((u) => u.did === did) ?? null;
+    const u = loadFromFile().find((u) => u.did === did);
+    return u ? applyTrustSidestore(u) : null;
   }
 
   const { data, error } = await supabase
@@ -166,7 +230,7 @@ export async function getUserByDidFromStore(
     console.error("[UserStorage] Supabase getUserByDid failed:", error.message);
     return null;
   }
-  return data ? rowToUser(data as UserRow) : null;
+  return data ? applyTrustSidestore(rowToUser(data as UserRow)) : null;
 }
 
 export async function insertUser(user: StoredUser): Promise<void> {
@@ -196,13 +260,22 @@ export async function updateUser(
     >
   >
 ): Promise<StoredUser | null> {
+  // Always mirror trust updates to the sidestore so the feature works
+  // regardless of whether Supabase has the trust_level column.
+  if (updates.trustLevel !== undefined || updates.trustNote !== undefined) {
+    writeTrustSidestore(id, {
+      trustLevel: updates.trustLevel,
+      trustNote: updates.trustNote,
+    });
+  }
+
   if (!supabase) {
     const users = loadFromFile();
     const idx = users.findIndex((u) => u.id === id);
     if (idx < 0) return null;
     users[idx] = { ...users[idx], ...updates };
     saveToFile(users);
-    return users[idx];
+    return applyTrustSidestore(users[idx]);
   }
 
   const patch: Record<string, string | null> = {};
@@ -212,18 +285,34 @@ export async function updateUser(
   if (updates.trustLevel !== undefined) patch.trust_level = updates.trustLevel;
   if (updates.trustNote !== undefined) patch.trust_note = updates.trustNote ?? null;
 
-  const { data, error } = await supabase
-    .from("users")
-    .update(patch)
-    .eq("id", id)
-    .select()
-    .maybeSingle();
+  const attemptUpdate = async (p: Record<string, string | null>) =>
+    supabase!.from("users").update(p).eq("id", id).select().maybeSingle();
+
+  let { data, error } = await attemptUpdate(patch);
+
+  if (error && isMissingTrustColumn(error)) {
+    // Retry without trust columns; sidestore already holds the new value.
+    console.warn(
+      "[UserStorage] trust_level column missing on Supabase users table; " +
+        "persisting trust info to local sidestore instead. " +
+        "Run scripts/trust-registry-schema.sql to move it to Supabase."
+    );
+    const stripped = { ...patch };
+    delete stripped.trust_level;
+    delete stripped.trust_note;
+    if (Object.keys(stripped).length === 0) {
+      // Nothing else to update - fetch the current row so we can return it.
+      const existing = await getUserByIdFromStore(id);
+      return existing;
+    }
+    ({ data, error } = await attemptUpdate(stripped));
+  }
 
   if (error) {
     console.error("[UserStorage] Supabase updateUser failed:", error.message);
     return null;
   }
-  return data ? rowToUser(data as UserRow) : null;
+  return data ? applyTrustSidestore(rowToUser(data as UserRow)) : null;
 }
 
 export async function ensureDefaultAdmin(

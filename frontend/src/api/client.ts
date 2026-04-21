@@ -83,6 +83,18 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return res.json();
 }
 
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: `Request failed: ${res.status}` }));
+    throw new Error(error.message || `Request failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 // Auth API calls
 export const authApi = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
