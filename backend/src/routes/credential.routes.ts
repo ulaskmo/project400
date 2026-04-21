@@ -26,7 +26,12 @@ router.post("/self", authenticate, holderOnly, handleSelfIssueCredential);
 // Issuers and holders can view specific credentials
 router.get("/:credentialId", authenticate, authorize("issuer", "holder", "admin"), handleGetCredential);
 
-// Only issuers can revoke credentials they issued
-router.post("/:credentialId/revoke", authenticate, issuerOnly, handleRevokeCredential);
+// Issuers can revoke credentials they issued; holders can revoke credentials they hold
+router.post(
+  "/:credentialId/revoke",
+  authenticate,
+  authorize("issuer", "holder", "admin"),
+  handleRevokeCredential
+);
 
 export default router;

@@ -116,7 +116,38 @@ export const handleRevokeCredential = async (
   next: NextFunction
 ) => {
   try {
-    const result = await revokeCredential(req.params.credentialId);
+    if (!req.user) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+
+    const credentialId = req.params.credentialId;
+    const credential = await getCredential(credentialId);
+    if (!credential) {
+      res.status(404).json({ message: "Credential not found" });
+      return;
+    }
+
+    if (credential.status === "revoked") {
+      res.status(400).json({ message: "Credential is already revoked" });
+      return;
+    }
+
+    const user = await getUserById(req.user.id);
+    const userDid = user?.did;
+
+    const isAdmin = req.user.role === "admin";
+    const isIssuer = !!userDid && credential.issuerDid === userDid;
+    const isHolder = !!userDid && credential.holderDid === userDid;
+
+    if (!isAdmin && !isIssuer && !isHolder) {
+      res.status(403).json({
+        message: "You can only revoke credentials you issued or hold",
+      });
+      return;
+    }
+
+    const result = await revokeCredential(credentialId);
     res.json(result);
   } catch (error) {
     next(error);

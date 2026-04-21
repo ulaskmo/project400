@@ -8,6 +8,7 @@ import { UserPanel } from "./components/UserPanel";
 import { IssuerPanel } from "./components/IssuerPanel";
 import { VerifierPanel } from "./components/VerifierPanel";
 import { AdminPanel } from "./components/AdminPanel";
+import { ChatbotWidget } from "./components/ChatbotWidget";
 
 type Tab = "user" | "issuer" | "verifier" | "admin";
 
@@ -274,6 +275,9 @@ function MainApp() {
           </span>
         </div>
       </footer>
+
+      {/* Floating help chatbot — available on all authenticated pages */}
+      <ChatbotWidget />
     </div>
   );
 }
