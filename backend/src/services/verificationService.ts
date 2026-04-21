@@ -1,6 +1,7 @@
 import { getCredential } from "./credentialService";
 import { getDid } from "./didService";
 import { getUserByDid } from "./authService";
+import { verifyVerifiableCredential, VerifiableCredential } from "./vcService";
 
 export interface VerificationResult {
   credentialId: string;
@@ -22,6 +23,14 @@ export interface VerificationResult {
     description?: string;
     issuedBy?: string;
     expiresAt?: string;
+    subjectFields?: Record<string, unknown>;
+  };
+  cryptoProof?: {
+    signatureValid: boolean;
+    algorithm: "Ed25519" | null;
+    allDisclosuresValid: boolean;
+    issuerKeyKnown: boolean;
+    reason?: string;
   };
   timestamp: string;
 }
@@ -63,6 +72,39 @@ export const verifyCredential = async (
 
   const resolved = await resolveIssuer(credential.issuerDid);
 
+  // Verify cryptographic proof if the VC is present
+  let cryptoProof: VerificationResult["cryptoProof"];
+  if (credential.vc) {
+    try {
+      const r = await verifyVerifiableCredential(
+        credential.vc as VerifiableCredential
+      );
+      cryptoProof = {
+        signatureValid: r.signatureValid,
+        algorithm: "Ed25519",
+        allDisclosuresValid: r.allDisclosuresValid,
+        issuerKeyKnown: r.issuerKnown,
+        reason: r.reason,
+      };
+    } catch (err) {
+      cryptoProof = {
+        signatureValid: false,
+        algorithm: "Ed25519",
+        allDisclosuresValid: false,
+        issuerKeyKnown: false,
+        reason: (err as Error).message,
+      };
+    }
+  } else {
+    cryptoProof = {
+      signatureValid: false,
+      algorithm: null,
+      allDisclosuresValid: false,
+      issuerKeyKnown: false,
+      reason: "No W3C VC proof attached (legacy credential)",
+    };
+  }
+
   // Step 2: Check if revoked or expired
   if (credential.status === "revoked") {
     return {
@@ -72,6 +114,7 @@ export const verifyCredential = async (
       issuer: { did: credential.issuerDid, verified: true, ...resolved },
       holder: { did: credential.holderDid },
       metadata: credential.metadata,
+      cryptoProof,
       timestamp,
     };
   }
@@ -84,6 +127,7 @@ export const verifyCredential = async (
       issuer: { did: credential.issuerDid, verified: true, ...resolved },
       holder: { did: credential.holderDid },
       metadata: credential.metadata,
+      cryptoProof,
       timestamp,
     };
   }
@@ -92,13 +136,12 @@ export const verifyCredential = async (
   const issuerDid = await getDid(credential.issuerDid);
   const issuerVerified = issuerDid !== null;
 
-  // Step 4: In a real system, we would verify the cryptographic signature here
-  // For demo purposes, we assume the signature is valid if the credential exists
-
   return {
     credentialId,
     status: "valid",
-    details: "Credential is authentic and has not been revoked",
+    details: cryptoProof.signatureValid
+      ? "Credential is authentic, cryptographically signed, and not revoked"
+      : "Credential is registered and not revoked",
     issuer: {
       did: credential.issuerDid,
       verified: issuerVerified,
@@ -108,6 +151,7 @@ export const verifyCredential = async (
       did: credential.holderDid,
     },
     metadata: credential.metadata,
+    cryptoProof,
     timestamp,
   };
 };

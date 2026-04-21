@@ -19,8 +19,12 @@ export interface StoredCredentialRecord {
     description?: string;
     issuedBy?: string;
     expiresAt?: string;
+    subjectFields?: Record<string, unknown>;
   };
   onChain: boolean;
+  // Full signed W3C Verifiable Credential (Ed25519). Optional for
+  // backward compatibility with pre-migration credentials.
+  vc?: unknown;
 }
 
 function ensureDataDir() {

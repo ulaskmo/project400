@@ -14,6 +14,7 @@ export interface CredentialMetadata {
   description?: string;
   issuedBy?: string;
   expiresAt?: string;
+  subjectFields?: Record<string, unknown>;
 }
 
 export interface StoredCredential {

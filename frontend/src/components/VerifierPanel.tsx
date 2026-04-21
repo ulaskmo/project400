@@ -3,6 +3,7 @@ import { apiPost } from "../api/client";
 import type { TrustLevel } from "../api/client";
 import { TrustBadge, describeTrustLevel } from "./TrustBadge";
 import { QRScanner, extractCredentialId } from "./QRScanner";
+import { VerifierRequestsPanel } from "./VerifierRequestsPanel";
 
 type VerificationResult = {
   credentialId: string;
@@ -71,6 +72,7 @@ export function VerifierPanel() {
   const [loading, setLoading] = useState(false);
   const [verificationHistory, setVerificationHistory] = useState<VerificationResult[]>([]);
   const [mode, setMode] = useState<VerifyMode>("manual");
+  const [view, setView] = useState<"verify" | "requests">("verify");
   const lastScanRef = useRef<string | null>(null);
 
   const verifyId = async (rawId: string) => {
@@ -110,12 +112,32 @@ export function VerifierPanel() {
     <div className="panel">
       <div className="panel-header">
         <div className="panel-icon verifier"><SearchIcon /></div>
-        <h2 className="panel-title">Verify Credential</h2>
+        <h2 className="panel-title">Verifier Console</h2>
         <p className="panel-description">
-          Enter a credential ID to verify its authenticity on the blockchain.
+          Verify credentials directly or request proofs via Presentation Exchange.
         </p>
       </div>
 
+      <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)", justifyContent: "center" }}>
+        <button
+          className={`btn ${view === "verify" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => setView("verify")}
+          style={{ padding: "var(--space-2) var(--space-4)", fontSize: "0.875rem" }}
+        >
+          Quick Verify
+        </button>
+        <button
+          className={`btn ${view === "requests" ? "btn-primary" : "btn-secondary"}`}
+          onClick={() => setView("requests")}
+          style={{ padding: "var(--space-2) var(--space-4)", fontSize: "0.875rem" }}
+        >
+          Presentation Requests
+        </button>
+      </div>
+
+      {view === "requests" && <VerifierRequestsPanel />}
+      {view === "verify" && (
+        <>
       {/* Mode tabs */}
       <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)", justifyContent: "center" }}>
         <button
@@ -369,6 +391,8 @@ export function VerifierPanel() {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -33,6 +33,7 @@ function addToIndex(payload: CredentialPayload, onChain: boolean) {
     issuedAt: new Date().toISOString(),
     metadata: payload.metadata,
     onChain,
+    vc: payload.vc,
   };
   credentialIndex.set(payload.credentialId, record);
   persistIndex();
@@ -46,6 +47,13 @@ export interface CredentialPayload {
   signature?: string;
   status: "valid" | "revoked" | "expired";
   metadata?: CredentialMetadata;
+  vc?: unknown;
+}
+
+export function getCredentialRecord(
+  credentialId: string
+): StoredCredentialRecord | null {
+  return credentialIndex.get(credentialId) ?? null;
 }
 
 export const issueCredential = async (
@@ -118,6 +126,7 @@ export const getCredential = async (
       signature: local.signature,
       status: local.status,
       metadata: local.metadata,
+      vc: local.vc,
     };
   }
 
@@ -210,6 +219,7 @@ export const getCredentialsByHolder = async (
         signature: record.signature,
         status: record.status,
         metadata: record.metadata,
+        vc: record.vc,
       });
     }
   });
@@ -250,6 +260,7 @@ export const getCredentialsByIssuer = async (
         signature: record.signature,
         status: record.status,
         metadata: record.metadata,
+        vc: record.vc,
       });
     }
   });

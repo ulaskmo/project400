@@ -57,6 +57,7 @@ export const handlePublicVerify = async (
       subjectName: result.metadata?.subjectName,
       description: result.metadata?.description,
       expiresAt: result.metadata?.expiresAt,
+      cryptoProof: result.cryptoProof,
       verifiedAt: result.timestamp,
     });
   } catch (error) {

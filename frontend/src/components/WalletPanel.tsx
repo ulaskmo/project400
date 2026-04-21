@@ -143,6 +143,60 @@ export function WalletPanel() {
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [confirmRevokeCred, setConfirmRevokeCred] = useState<Credential | null>(null);
 
+  // Raw VC viewer
+  const [vcModal, setVcModal] = useState<{
+    credentialId: string;
+    vc: unknown;
+    proof: {
+      signatureValid: boolean;
+      algorithm?: string;
+      issuerKeyKnown: boolean;
+      allDisclosuresValid: boolean;
+    } | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
+
+  const openVcViewer = async (credentialId: string) => {
+    setVcModal({
+      credentialId,
+      vc: null,
+      proof: null,
+      loading: true,
+      error: null,
+    });
+    try {
+      const [vc, verify] = await Promise.all([
+        apiGet<unknown>(`/credentials/${credentialId}/vc`),
+        apiGet<{
+          signatureValid: boolean;
+          issuerKnown: boolean;
+          allDisclosuresValid: boolean;
+          disclosureChecks?: Record<string, boolean>;
+          reason?: string;
+        }>(`/credentials/${credentialId}/verify-signature`),
+      ]);
+      setVcModal({
+        credentialId,
+        vc,
+        proof: {
+          signatureValid: verify.signatureValid,
+          algorithm: "Ed25519",
+          issuerKeyKnown: verify.issuerKnown,
+          allDisclosuresValid: verify.allDisclosuresValid,
+        },
+        loading: false,
+        error: null,
+      });
+    } catch (e) {
+      setVcModal((prev) =>
+        prev
+          ? { ...prev, loading: false, error: (e as Error).message }
+          : prev
+      );
+    }
+  };
+
   useEffect(() => {
     if (user?.did) loadCredentials();
   }, [user?.did]);
@@ -519,6 +573,11 @@ export function WalletPanel() {
                             onClick={() => { navigator.clipboard.writeText(verifyUrl); }}>
                             <CopyIcon /> Copy Link
                           </button>
+                          <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8125rem" }}
+                            onClick={(e) => { e.stopPropagation(); openVcViewer(cred.credentialId); }}
+                            title="Inspect the W3C Verifiable Credential & signature">
+                            View VC
+                          </button>
                           {cred.status === "valid" && (
                             <button
                               className="btn btn-secondary"
@@ -683,6 +742,118 @@ export function WalletPanel() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {vcModal && (
+        <div role="dialog" aria-modal="true" aria-label="W3C Verifiable Credential"
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+            padding: "var(--space-4)"
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setVcModal(null);
+          }}>
+          <div className="card"
+            style={{ maxWidth: 720, width: "100%", maxHeight: "92vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div className="card-icon" style={{ width: 32, height: 32 }}><FingerprintIcon /></div>
+              <div style={{ flex: 1 }}>
+                <h3 className="card-title" style={{ fontSize: "0.95rem" }}>W3C Verifiable Credential</h3>
+                <p className="card-subtitle">Raw JSON + cryptographic proof</p>
+              </div>
+              <button className="btn btn-secondary" onClick={() => setVcModal(null)}
+                style={{ padding: "4px" }} aria-label="Close"><XIcon /></button>
+            </div>
+            <div style={{ padding: "var(--space-4)" }}>
+              {vcModal.loading ? (
+                <div style={{ textAlign: "center", padding: "var(--space-6)" }}>
+                  <span className="spinner" />
+                </div>
+              ) : vcModal.error ? (
+                <div className="error-message"><AlertCircleIcon /><span>{vcModal.error}</span></div>
+              ) : (
+                <>
+                  {vcModal.proof && (
+                    <div
+                      style={{
+                        padding: "var(--space-3)",
+                        background: vcModal.proof.signatureValid
+                          ? "var(--success-50)"
+                          : "var(--danger-50)",
+                        border: `1px solid ${vcModal.proof.signatureValid ? "var(--success-200, var(--success-100))" : "var(--danger-200, var(--danger-100))"}`,
+                        borderRadius: "var(--radius-md)",
+                        marginBottom: "var(--space-3)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: vcModal.proof.signatureValid
+                            ? "var(--success-700)"
+                            : "var(--danger-700)",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {vcModal.proof.signatureValid
+                          ? "✓ Signature valid"
+                          : "✗ Signature invalid"}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--gray-700)", display: "grid", gap: 2 }}>
+                        <div>Algorithm: <strong>{vcModal.proof.algorithm || "Ed25519"}</strong></div>
+                        <div>Issuer key known: <strong>{vcModal.proof.issuerKeyKnown ? "yes" : "no"}</strong></div>
+                        <div>Selective disclosures intact: <strong>{vcModal.proof.allDisclosuresValid ? "yes" : "no"}</strong></div>
+                      </div>
+                    </div>
+                  )}
+                  {vcModal.vc ? (
+                    <pre
+                      style={{
+                        background: "var(--surface-inset)",
+                        padding: "var(--space-3)",
+                        borderRadius: "var(--radius-md)",
+                        fontSize: "0.7rem",
+                        lineHeight: 1.5,
+                        overflow: "auto",
+                        maxHeight: 460,
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      {JSON.stringify(vcModal.vc, null, 2)}
+                    </pre>
+                  ) : (
+                    <div
+                      style={{
+                        padding: "var(--space-3)",
+                        background: "var(--surface-inset)",
+                        borderRadius: "var(--radius-md)",
+                        color: "var(--gray-600)",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      No W3C VC stored for this credential (legacy format).
+                    </div>
+                  )}
+                  {vcModal.vc && (
+                    <button
+                      className="btn btn-secondary w-full"
+                      style={{ marginTop: "var(--space-3)" }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          JSON.stringify(vcModal.vc, null, 2)
+                        );
+                      }}
+                    >
+                      <CopyIcon /> Copy JSON
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

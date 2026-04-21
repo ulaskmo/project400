@@ -5,9 +5,14 @@ import {
   getCredentialsByHolder,
   getCredentialsByIssuer,
   issueCredential,
-  revokeCredential
+  revokeCredential,
 } from "../services/credentialService";
 import { getUserById, getUserByDid } from "../services/authService";
+import {
+  issueVerifiableCredential,
+  verifyVerifiableCredential,
+  VerifiableCredential,
+} from "../services/vcService";
 
 /**
  * Attach issuer trust info (trustLevel, organizationName) to a list of
@@ -58,14 +63,36 @@ export const handleIssueCredential = async (
     const issuer = await getUserById(req.user.id);
     const issuerDid = issuer?.did || `did:chainshield:issuer-${req.user.id}`;
 
-    const { credentialId, holderDid, ipfsHash, metadata } = req.body;
+    const { credentialId, holderDid, ipfsHash, metadata, subjectFields } =
+      req.body;
 
     if (!credentialId || !holderDid) {
       res.status(400).json({ message: "credentialId and holderDid are required" });
       return;
     }
 
-    const payload = {
+    // Build credentialSubject from provided fields + known metadata
+    const resolvedSubjectFields: Record<string, unknown> = {
+      ...(subjectFields || {}),
+    };
+    if (metadata?.subjectName && !("subjectName" in resolvedSubjectFields)) {
+      resolvedSubjectFields.subjectName = metadata.subjectName;
+    }
+    if (metadata?.description && !("description" in resolvedSubjectFields)) {
+      resolvedSubjectFields.description = metadata.description;
+    }
+
+    const vc = await issueVerifiableCredential({
+      issuerUserId: req.user.id,
+      issuerDid,
+      holderDid,
+      credentialId,
+      types: [metadata?.type || "ChainShieldCredential"],
+      credentialSubject: resolvedSubjectFields,
+      expirationDate: metadata?.expiresAt,
+    });
+
+    const payload: Omit<CredentialPayload, "status"> = {
       credentialId,
       holderDid,
       ipfsHash,
@@ -73,9 +100,11 @@ export const handleIssueCredential = async (
       metadata: {
         ...metadata,
         issuedBy: issuer?.organizationName || issuer?.email || "Unknown Issuer",
+        subjectFields: resolvedSubjectFields,
       },
-    } as Omit<CredentialPayload, "status">;
-    
+      vc,
+    };
+
     const credential = await issueCredential(payload);
     res.status(201).json(credential);
   } catch (error) {
@@ -192,6 +221,47 @@ export const handleRevokeCredential = async (
   }
 };
 
+export const handleGetRawVc = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const credential = await getCredential(req.params.credentialId);
+    if (!credential) {
+      res.status(404).json({ message: "Credential not found" });
+      return;
+    }
+    if (!credential.vc) {
+      res.status(404).json({ message: "No W3C VC attached to this credential" });
+      return;
+    }
+    res.json(credential.vc);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleVerifyVc = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const credential = await getCredential(req.params.credentialId);
+    if (!credential || !credential.vc) {
+      res.status(404).json({ message: "No signed VC for this credential" });
+      return;
+    }
+    const result = await verifyVerifiableCredential(
+      credential.vc as VerifiableCredential
+    );
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Self-issue: Holder adds their own credential (self-attested)
 export const handleSelfIssueCredential = async (
   req: Request,
@@ -219,7 +289,7 @@ export const handleSelfIssueCredential = async (
 
     // Generate unique credential ID
     const credentialId = `self-cred-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    
+
     // Simulate IPFS hash (in production, would actually upload to IPFS)
     const credentialPayload = {
       type: `self:${credentialType}`, // Prefix with "self:" to mark as self-attested
@@ -232,11 +302,22 @@ export const handleSelfIssueCredential = async (
     };
     const ipfsHash = `ipfs://Qm${Buffer.from(JSON.stringify(credentialPayload)).toString("base64").slice(0, 44)}`;
 
+    const subjectFields: Record<string, unknown> = { ...credentialData };
+    const vc = await issueVerifiableCredential({
+      issuerUserId: req.user.id,
+      issuerDid: user.did,
+      holderDid: user.did,
+      credentialId,
+      types: [`self:${credentialType}`],
+      credentialSubject: subjectFields,
+      expirationDate: credentialData.expiresAt,
+    });
+
     // For self-issued credentials, the holder is also the issuer
-    const payload = {
+    const payload: Omit<CredentialPayload, "status"> = {
       credentialId,
       holderDid: user.did,
-      issuerDid: user.did, // Self-issued: holder = issuer
+      issuerDid: user.did,
       ipfsHash,
       metadata: {
         type: `self:${credentialType}`,
@@ -244,8 +325,10 @@ export const handleSelfIssueCredential = async (
         description: credentialData.description || undefined,
         issuedBy: credentialData.issuedBy || user.email,
         expiresAt: credentialData.expiresAt || undefined,
+        subjectFields,
       },
-    } as Omit<CredentialPayload, "status">;
+      vc,
+    };
 
     const credential = await issueCredential(payload);
     res.status(201).json(credential);

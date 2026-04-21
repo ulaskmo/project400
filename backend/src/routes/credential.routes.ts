@@ -5,7 +5,9 @@ import {
   handleGetIssuedCredentials,
   handleIssueCredential,
   handleSelfIssueCredential,
-  handleRevokeCredential
+  handleRevokeCredential,
+  handleGetRawVc,
+  handleVerifyVc,
 } from "../controllers/credentialController";
 import { authenticate, issuerOnly, holderOnly, authorize } from "../middleware/auth";
 
@@ -25,6 +27,12 @@ router.post("/self", authenticate, holderOnly, handleSelfIssueCredential);
 
 // Issuers and holders can view specific credentials
 router.get("/:credentialId", authenticate, authorize("issuer", "holder", "admin"), handleGetCredential);
+
+// Raw signed W3C Verifiable Credential (public — used by verifier + holder UI)
+router.get("/:credentialId/vc", handleGetRawVc);
+
+// Cryptographically verify the VC signature + selective-disclosure digests
+router.get("/:credentialId/verify-signature", handleVerifyVc);
 
 // Issuers can revoke credentials they issued; holders can revoke credentials they hold
 router.post(
