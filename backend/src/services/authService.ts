@@ -159,9 +159,40 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   return stored ? toUser(stored) : null;
 };
 
+/**
+ * Resolve a user from a DID.
+ *
+ * Credentials issued before users had real DIDs on file use a synthetic
+ * DID of the form `did:chainshield:{role}-{userId}` (see
+ * credentialController.handleIssueCredential). When a direct lookup fails
+ * we try to extract the UUID and look up by user id, so the trust
+ * registry, badges and verifier trust banners keep working for those
+ * legacy credentials too.
+ */
+const SYNTHETIC_DID_RE =
+  /^did:chainshield:(?:issuer|holder|verifier|admin)-([0-9a-f-]{36})$/i;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const getUserByDid = async (did: string): Promise<User | null> => {
-  const stored = await getUserByDidFromStore(did);
-  return stored ? toUser(stored) : null;
+  const direct = await getUserByDidFromStore(did);
+  if (direct) return toUser(direct);
+
+  // Fallback 1: synthetic DID with role prefix
+  const match = SYNTHETIC_DID_RE.exec(did);
+  if (match) {
+    const byId = await getUserByIdFromStore(match[1]);
+    if (byId) return toUser(byId);
+  }
+
+  // Fallback 2: bare `did:chainshield:<uuid>` form
+  const bare = did.replace(/^did:chainshield:/i, "");
+  if (UUID_RE.test(bare)) {
+    const byId = await getUserByIdFromStore(bare);
+    if (byId) return toUser(byId);
+  }
+
+  return null;
 };
 
 export const updateUserDid = async (
