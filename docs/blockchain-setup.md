@@ -147,7 +147,7 @@ struct CredentialRecord {
     address registeredBy;
     string issuerDid;
     string holderDid;
-    string ipfsHash;     // pointer/content hash
+    string ipfsHash;     // ipfs://<cid> (Pinata) or sha256:<hex> fallback
     string signature;    // issuer's Ed25519 signature
     CredentialStatus status;
     uint256 issuedAt;
@@ -155,7 +155,58 @@ struct CredentialRecord {
 }
 ```
 
-The full W3C Verifiable Credential stays in the holder's wallet (and
-the local `credentials.json` index). The blockchain anchors the
+The full W3C Verifiable Credential is pinned to **IPFS via Pinata** on
+issuance (see IPFS setup below) and a copy is kept in the local
+`credentials.json` index for fast reads. The blockchain anchors the
 **integrity + existence** of each credential; the Blockchain tab in the
-UI proves that anchoring.
+UI proves that anchoring and lets verifiers re-fetch the VC from any
+IPFS gateway.
+
+---
+
+## 6. IPFS via Pinata (optional but recommended)
+
+Without IPFS configured, the backend stores a deterministic
+`sha256:<hex>` content hash in the `ipfsHash` slot. With Pinata it
+stores an `ipfs://<cid>` pointer that any public gateway can resolve.
+
+1. Create a free account at https://www.pinata.cloud (1 GB free tier).
+2. **Keys → New Key**. Grant it the `pinJSONToIPFS` and
+   `testAuthentication` permissions. Copy the generated **JWT**.
+3. Add to `backend/.env`:
+
+   ```bash
+   PINATA_JWT=eyJhbGciOi...
+   # Optional — override the default gateway used by the UI:
+   # IPFS_GATEWAY_URL=https://gateway.pinata.cloud/ipfs
+   ```
+
+4. Restart the backend. On issuance you'll see:
+
+   ```
+   [Credentials] Pinned VC to IPFS: ipfs://bafy… (sha256 abc123…)
+   ```
+
+5. Probe the status:
+
+   ```bash
+   curl http://localhost:4000/api/chain/ipfs/status
+   ```
+
+6. Retrieve a credential straight from IPFS:
+
+   ```bash
+   curl http://localhost:4000/api/chain/credentials/<credentialId>/ipfs
+   ```
+
+   The response shows the gateway URL that served the CID, and the
+   exact JSON that was pinned.
+
+### What does the backend actually pin?
+
+The **signed W3C Verifiable Credential** — identical to what is stored
+locally and returned by `GET /api/credentials/:id/vc`. That's the full
+Ed25519-signed JSON with `credentialSubjectCommitments` (so selective
+disclosure still works). Because the CID is a hash of the canonical
+JSON, any tampering with the off-chain copy immediately breaks both the
+IPFS lookup *and* the on-chain match check.

@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import { createHash } from "crypto";
 import {
   CredentialPayload,
   getCredential,
@@ -14,17 +13,30 @@ import {
   verifyVerifiableCredential,
   VerifiableCredential,
 } from "../services/vcService";
+import { fetchJson, putJson, resolvePointer } from "../services/ipfsService";
 
 /**
- * Produce a deterministic SHA-256 content hash for the credential payload.
+ * Pin the signed VC payload to IPFS (via Pinata) and return a pointer
+ * suitable for the `ipfsHash` slot of the on-chain record.
  *
- * This is what gets written to the `ipfsHash` slot of the on-chain record
- * today. When IPFS is actually wired up later, the uploaded CID will be
- * stored here instead — the contract schema doesn't need to change.
+ * When IPFS credentials aren't configured the service transparently
+ * falls back to `sha256:<hex>` so local/demo flows still work.
  */
-function computeContentHash(payload: unknown): string {
-  const json = JSON.stringify(payload);
-  return `sha256:${createHash("sha256").update(json).digest("hex")}`;
+async function storeCredentialPayload(
+  payload: unknown,
+  name: string
+): Promise<string> {
+  const result = await putJson(payload, { name });
+  if (result.pinned) {
+    console.log(
+      `[Credentials] Pinned VC to IPFS: ${result.pointer} (sha256 ${result.contentHash.slice(0, 12)}…)`
+    );
+  } else {
+    console.log(
+      `[Credentials] IPFS disabled — using content hash ${result.pointer.slice(0, 20)}…`
+    );
+  }
+  return result.pointer;
 }
 
 /**
@@ -104,12 +116,12 @@ export const handleIssueCredential = async (
       expirationDate: metadata?.expiresAt,
     });
 
-    const contentHash = computeContentHash(vc);
+    const ipfsPointer = await storeCredentialPayload(vc, `vc-${credentialId}`);
 
     const payload: Omit<CredentialPayload, "status"> = {
       credentialId,
       holderDid,
-      ipfsHash: contentHash,
+      ipfsHash: ipfsPointer,
       issuerDid,
       metadata: {
         ...metadata,
@@ -322,13 +334,13 @@ export const handleSelfIssueCredential = async (
       expirationDate: credentialData.expiresAt,
     });
 
-    const contentHash = computeContentHash(vc);
+    const ipfsPointer = await storeCredentialPayload(vc, `vc-${credentialId}`);
 
     const payload: Omit<CredentialPayload, "status"> = {
       credentialId,
       holderDid: user.did,
       issuerDid: user.did,
-      ipfsHash: contentHash,
+      ipfsHash: ipfsPointer,
       metadata: {
         type: `self:${credentialType}`,
         subjectName: credentialData.title || undefined,

@@ -84,7 +84,7 @@ const FAQ: FaqEntry[] = [
     keywords: ["blockchain", "polygon", "chain", "onchain", "on-chain", "where", "stored"],
     question: "Where is my data stored?",
     answer:
-      "Credential metadata (issuer, holder, content hash, signature, status) is anchored on the Polygon blockchain so nobody can tamper with it. The signed credential JSON itself is kept in our managed database today (IPFS hand-off is planned). Your account details — email, password hash, friends, messages — also live in that database. Your Ed25519 private key never leaves your server account and is encrypted at rest.",
+      "Credential metadata (issuer, holder, IPFS pointer, signature, status) is anchored on the Polygon blockchain so nobody can tamper with it. The signed credential JSON itself is pinned to IPFS (via Pinata) when the backend has Pinata credentials configured — the on-chain `ipfsHash` field stores the resulting `ipfs://<cid>` pointer, and any IPFS gateway can fetch the raw VC. If IPFS isn't configured the system falls back to a `sha256:` content hash and the VC stays in the local index. Your account details — email, password hash, friends, messages — also live in our managed database. Your Ed25519 private key never leaves your server account and is encrypted at rest.",
   },
   {
     keywords: ["forgot", "password", "reset", "email", "link"],
@@ -122,10 +122,10 @@ const FAQ: FaqEntry[] = [
     answer: "Click the arrow icon in the top-right corner of the header to sign out. Your credentials stay safe — next time you log in, they'll be right where you left them.",
   },
   {
-    keywords: ["ipfs", "file", "pdf", "document", "upload", "attach"],
+    keywords: ["ipfs", "file", "pdf", "document", "upload", "attach", "pinata", "cid"],
     question: "What is IPFS and where are my files?",
     answer:
-      "IPFS is a decentralised file storage network. When you attach a file to a credential, it's uploaded to IPFS and its hash is stored on Polygon. The file can be retrieved from any IPFS gateway using that hash — and nobody can alter it without changing the hash.",
+      "IPFS is a decentralised content-addressed storage network. When the backend is configured with Pinata credentials, every signed credential JSON is pinned to IPFS and the resulting CID is written on-chain as `ipfs://<cid>`. Anyone can fetch the credential from any IPFS gateway (Pinata, ipfs.io, Cloudflare, dweb.link) using that CID — the content is immutable, so changing even one byte changes the CID and breaks verification. You can see the current IPFS status in the Blockchain tab.",
   },
 ];
 

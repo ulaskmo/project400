@@ -1,13 +1,80 @@
 import { Request, Response } from "express";
 import { getChainInfo, verifyCredentialOnChain } from "../services/chainService";
-import { getCredentialsByHolder, getCredentialsByIssuer } from "../services/credentialService";
+import { getCredentialsByHolder, getCredentialsByIssuer, getCredential } from "../services/credentialService";
 import { loadCredentials } from "../services/credentialStorage";
 import { getUserById } from "../services/authService";
+import {
+  checkIpfsHealth,
+  fetchJson,
+  getIpfsConfig,
+  resolvePointer,
+} from "../services/ipfsService";
 
 export async function handleChainInfo(_req: Request, res: Response) {
   try {
-    const info = await getChainInfo();
-    res.json(info);
+    const [info, ipfs] = await Promise.all([getChainInfo(), checkIpfsHealth()]);
+    res.json({ ...info, ipfs });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+}
+
+export async function handleIpfsStatus(_req: Request, res: Response) {
+  try {
+    const health = await checkIpfsHealth();
+    res.json(health);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+}
+
+/**
+ * Fetch the signed VC payload for a credential from IPFS (when the
+ * on-chain `ipfsHash` field is an `ipfs://<cid>` pointer). Falls back
+ * to the locally-stored VC when the pointer is a `sha256:` hash.
+ */
+export async function handleFetchCredentialFromIpfs(req: Request, res: Response) {
+  const { credentialId } = req.params;
+  try {
+    const credential = await getCredential(credentialId);
+    if (!credential) {
+      res.status(404).json({ error: "Credential not found" });
+      return;
+    }
+    const pointer = credential.ipfsHash;
+    const resolved = resolvePointer(pointer);
+
+    if (resolved.kind === "ipfs") {
+      const fetched = await fetchJson(pointer);
+      res.json({
+        source: "ipfs",
+        pointer,
+        cid: resolved.cid,
+        gateway: fetched?.gateway,
+        data: fetched?.data ?? null,
+        localVc: credential.vc ?? null,
+      });
+      return;
+    }
+
+    if (resolved.kind === "sha256") {
+      res.json({
+        source: "local",
+        pointer,
+        contentHash: resolved.hash,
+        data: credential.vc ?? null,
+        note: "IPFS not configured when this credential was issued; returning locally-indexed VC.",
+        ipfsConfig: getIpfsConfig(),
+      });
+      return;
+    }
+
+    res.json({
+      source: "unknown",
+      pointer,
+      data: credential.vc ?? null,
+      note: "Pointer format not recognised.",
+    });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
